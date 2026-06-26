@@ -72,3 +72,7 @@ docs/*.pdf
 Thumbs.db
 .idea/
 .vscode/
+
+# Planning docs
+*plan*.md
+*PLAN*.md

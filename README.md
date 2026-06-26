@@ -13,7 +13,7 @@ El proyecto busca comparar tres modos de consulta sobre convocatorias publicas:
 ## Arquitectura
 
 ```text
-CSV RAG dataset
+Parquet RAG dataset
 → PostgreSQL Docker container
 → pgvector extension
 → embeddings almacenados en PostgreSQL
@@ -114,10 +114,34 @@ El script [db/init/01_init_pgvector.sql](/var/www/codigo/maestria_ia/umsa/diplom
 Flujo sugerido:
 
 1. [01_extract_sicoes.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/01_extract_sicoes.ipynb): descarga y guarda el dataset crudo.
-2. [02_clean_transform_rag.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/02_clean_transform_rag.ipynb): limpieza, normalizacion y construccion de `texto_rag`.
-3. [03_eda.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/03_eda.ipynb): analisis exploratorio del dataset limpio.
+2. [02_clean_transform_rag.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/02_clean_transform_rag.ipynb): limpieza, normalizacion canonica y construccion de `texto_rag`.
+3. [03_eda.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/03_eda.ipynb): analisis exploratorio del dataset limpio y generacion de figuras en `outputs/figures/`.
 4. [04_embeddings_pgvector.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/04_embeddings_pgvector.ipynb): base para carga en PostgreSQL y generacion de embeddings.
 5. [05_rag_evaluation.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/05_rag_evaluation.ipynb): evaluacion comparativa de modos de busqueda.
+
+Estado actual del flujo:
+
+* `01_extract_sicoes.ipynb`: completado.
+* `02_clean_transform_rag.ipynb`: completado y corregido.
+  * `objeto_contratacion` ya se extrae desde la columna correcta del raw.
+  * `modalidad` ya reconoce casos como `CND1`.
+* `03_eda.ipynb`: completado y validado sobre el dataset corregido.
+* `04_embeddings_pgvector.ipynb`: pendiente.
+* `05_rag_evaluation.ipynb`: pendiente.
+
+## Contrato de datos actual
+
+El proyecto mantiene dos niveles de datos persistidos:
+
+* `data/processed/sicoes_convocatorias_clean.parquet`: dataset limpio canonico.
+* `data/rag/sicoes_convocatorias_rag.parquet`: dataset preparado para retrieval con `texto_rag`.
+
+Reglas vigentes:
+
+* `parquet` es el artefacto principal versionado para `processed` y `rag`.
+* Los `csv` generados por notebooks se consideran export auxiliares locales.
+* La normalizacion agresiva usada para frecuencia de palabras en el EDA no modifica el dataset canonico.
+* `texto_rag` conserva texto natural y enriquecido para retrieval, no una version sobrelimpia.
 
 El flujo recomendado es usar VS Code con la extension de Jupyter y seleccionar el kernel del `.venv`.
 
@@ -178,4 +202,14 @@ Recupera convocatorias relevantes, construye contexto y genera una respuesta con
 
 ## Estado actual
 
-Este repositorio contiene el scaffold academico y tecnico actualizado a PostgreSQL + pgvector. No implementa todavia la aplicacion final, pero deja preparada la siguiente fase para cargar el CSV RAG en PostgreSQL y generar embeddings.
+Este repositorio ya tiene validado el tramo de adquisicion, limpieza y EDA sobre convocatorias vigentes de SICOES.
+
+Estado confirmado:
+
+* dataset limpio y dataset RAG regenerados desde `raw`
+* `cuce` sin duplicados en el corte actual
+* `objeto_contratacion` corregido
+* `modalidad` sin vacios en el dataset procesado actual
+* EDA ejecutable de principio a fin con figuras exportadas
+
+La siguiente fase real del proyecto es consolidar la capa `src/` y comenzar la carga de embeddings en PostgreSQL + pgvector.
