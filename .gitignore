@@ -45,6 +45,7 @@ outputs/vector_store/
 *.fdb_latexmk
 *.fls
 *.lof
+*.lol
 *.log
 *.lot
 *.out

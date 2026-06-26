@@ -50,7 +50,7 @@ LangChain se mantiene como capa de orquestacion para desacoplar la logica de rec
 ├── .env.example
 ├── docker-compose.yml
 ├── pyproject.toml
-└── requirements.txt
+└── uv.lock
 ```
 
 ## Setup
@@ -76,12 +76,12 @@ source .venv/bin/activate
 uv sync --refresh
 ```
 
-2. Alternativa compatible con `venv`:
+2. Alternativa compatible con `venv` usando `pyproject.toml`:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
 En instalación manual con `pip`, `sentence-transformers` puede arrastrar una variante de `torch` más pesada. Si tu equipo es CPU-only, prioriza el flujo con `uv`.
@@ -119,17 +119,15 @@ Flujo sugerido:
 4. [04_embeddings_pgvector.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/04_embeddings_pgvector.ipynb): base para carga en PostgreSQL y generacion de embeddings.
 5. [05_rag_evaluation.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/05_rag_evaluation.ipynb): evaluacion comparativa de modos de busqueda.
 
-Para abrir notebooks con el entorno del proyecto:
+El flujo recomendado es usar VS Code con la extension de Jupyter y seleccionar el kernel del `.venv`.
+
+Si necesitas registrar el kernel manualmente:
 
 ```bash
-uv run jupyter lab
+python -m ipykernel install --user --name sicoes-rag-ai --display-name "Python (sicoes-rag-ai)"
 ```
 
-o
-
-```bash
-jupyter lab
-```
+No es necesario instalar `jupyterlab` o `notebook` como dependencias del proyecto para trabajar con notebooks en VS Code.
 
 ## Streamlit
 

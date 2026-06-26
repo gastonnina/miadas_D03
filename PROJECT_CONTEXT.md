@@ -68,8 +68,8 @@ sicoes-rag-ai/
 ├── PROJECT_CONTEXT.md
 ├── .gitignore
 ├── .env.example
-├── requirements.txt
 ├── pyproject.toml
+├── uv.lock
 ├── docker-compose.yml
 │
 ├── db/
