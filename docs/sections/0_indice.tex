@@ -1,0 +1,29 @@
+\newpage
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[R]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+\renewcommand{\contentsname}{ÍNDICE}
+\renewcommand{\cfttoctitlefont}{\large\bfseries}
+\renewcommand{\cftloftitlefont}{\large\bfseries}
+\renewcommand{\cftlottitlefont}{\large\bfseries}
+
+\tableofcontents
+
+\cleardoublepage
+\phantomsection
+\renewcommand{\listfigurename}{\MakeUppercase{Índice de Figuras}}
+\listoffigures
+
+\cleardoublepage
+\phantomsection
+\renewcommand{\tablename}{Tabla}
+\renewcommand{\listtablename}{\MakeUppercase{Índice de Tablas}}
+\listoftables
+
+\cleardoublepage
+\phantomsection
+\renewcommand{\lstlistingname}{Código}
+\renewcommand{\lstlistlistingname}{\MakeUppercase{Índice de Códigos}}
+\lstlistoflistings

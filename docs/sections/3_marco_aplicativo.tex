@@ -1,0 +1,44 @@
+\newpage
+\thispagestyle{empty}
+\vspace*{0.35\textheight}
+\begin{center}
+    {\Huge\textbf{CAPÍTULO III}} \\[0.5cm]
+    {\Huge\textbf{MARCO APLICATIVO}}
+\end{center}
+
+\newpage
+\chapter{Marco Aplicativo}
+
+\section{Metodología}
+
+El proyecto adopta CRISP-DM como metodología principal. Esta elección permite organizar de manera sistemática las fases de comprensión del problema, comprensión de los datos, preparación, modelado, evaluación y despliegue.
+
+\section{Arquitectura propuesta}
+
+La arquitectura objetivo se organiza como sigue:
+
+\begin{center}
+\texttt{SICOES → Raw → Clean → RAG Dataset → PostgreSQL → pgvector → LangChain → Streamlit}
+\end{center}
+
+Esta arquitectura también incorpora una línea base de búsqueda SQL utilizando \texttt{ILIKE}, con el fin de comparar desempeño frente a la búsqueda semántica.
+
+\section{Preparación de datos}
+
+La preparación contempla limpieza de HTML, normalización de columnas, deduplicación, conversión de fechas, construcción de \texttt{document\_id} y generación del campo \texttt{texto\_rag}. Los datasets se mantienen en CSV y Parquet para trazabilidad y compatibilidad.
+
+\section{Modelado y almacenamiento vectorial}
+
+Se empleará un modelo inicial de embeddings \texttt{sentence-transformers/all-MiniLM-L6-v2}, cuyas representaciones de 384 dimensiones se almacenarán en PostgreSQL con \texttt{pgvector}. Esta configuración permite búsquedas semánticas, filtros estructurados y estrategias híbridas.
+
+\section{Evaluación}
+
+La evaluación se centrará en tres modos de consulta:
+
+\begin{enumerate}
+    \item Búsqueda tradicional por palabra clave mediante SQL e \texttt{ILIKE}.
+    \item Búsqueda semántica usando similitud vectorial.
+    \item Generación de respuestas mediante RAG con contexto recuperado.
+\end{enumerate}
+
+Las métricas previstas incluyen Precision@5, Precision@10, relevancia manual y análisis cualitativo de resultados.

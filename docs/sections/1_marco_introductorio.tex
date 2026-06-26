@@ -1,0 +1,38 @@
+\newpage
+\thispagestyle{empty}
+\vspace*{0.35\textheight}
+\begin{center}
+    {\Huge\textbf{CAPÍTULO I}} \\[0.5cm]
+    {\Huge\textbf{MARCO INTRODUCTORIO}}
+\end{center}
+
+\newpage
+\chapter{Marco Introductorio}
+
+\section{Introducción}
+
+La búsqueda de convocatorias públicas en el portal SICOES constituye una actividad relevante para empresas, consultoras y proveedores que participan en procesos de contratación estatal en Bolivia. Sin embargo, la exploración manual o basada únicamente en palabras clave presenta limitaciones cuando las necesidades del usuario no coinciden exactamente con la redacción administrativa del objeto de contratación.
+
+\section{Planteamiento del problema}
+
+Los mecanismos tradicionales de búsqueda se apoyan principalmente en coincidencias textuales. Este enfoque reduce la capacidad de recuperación cuando una convocatoria describe el mismo requerimiento con terminología distinta, sinónimos o expresiones técnicas sectoriales.
+
+\section{Objetivo general}
+
+Diseñar e implementar un sistema inteligente de recuperación semántica para convocatorias públicas del SICOES mediante embeddings, PostgreSQL con pgvector y Retrieval-Augmented Generation.
+
+\section{Objetivos específicos}
+
+\begin{enumerate}
+    \item Extraer convocatorias públicas vigentes del portal SICOES.
+    \item Limpiar y transformar los datos para construir un dataset orientado a recuperación semántica.
+    \item Generar embeddings sobre las convocatorias.
+    \item Implementar PostgreSQL con pgvector como base vectorial principal.
+    \item Desarrollar una línea base de búsqueda tradicional usando SQL e \texttt{ILIKE}.
+    \item Construir un prototipo de consulta tipo chatbot con LangChain.
+    \item Evaluar búsqueda keyword, búsqueda semántica y una alternativa híbrida.
+\end{enumerate}
+
+\section{Justificación}
+
+La propuesta es pertinente por su valor práctico y académico. En el plano aplicado, puede facilitar el acceso a oportunidades de contratación pública. En el plano metodológico, permite documentar un caso reproducible de integración entre procesamiento de lenguaje natural, bases vectoriales y generación aumentada por recuperación en un contexto boliviano.

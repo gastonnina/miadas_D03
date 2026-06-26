@@ -1,0 +1,30 @@
+\newpage
+\thispagestyle{empty}
+\vspace*{0.35\textheight}
+\begin{center}
+    {\Huge\textbf{CAPÍTULO II}} \\[0.5cm]
+    {\Huge\textbf{MARCO TEÓRICO}}
+\end{center}
+
+\newpage
+\chapter{Marco Teórico}
+
+\section{Procesamiento de Lenguaje Natural}
+
+El procesamiento de lenguaje natural proporciona técnicas para representar, limpiar e interpretar texto no estructurado. En este proyecto, estas técnicas se aplican para transformar la información de las convocatorias públicas en una forma adecuada para búsqueda semántica.
+
+\section{Embeddings}
+
+Los embeddings son representaciones vectoriales densas que codifican relaciones semánticas entre fragmentos de texto. Su utilidad radica en permitir que consultas formuladas con términos distintos recuperen documentos conceptualmente cercanos.
+
+\section{Bases vectoriales}
+
+PostgreSQL con la extensión pgvector permite almacenar embeddings y realizar búsquedas por similitud dentro del mismo sistema de base de datos. Esta elección favorece una arquitectura mantenible, integrando información estructurada, filtros SQL y recuperación semántica en una sola plataforma.
+
+\section{Retrieval-Augmented Generation}
+
+El enfoque Retrieval-Augmented Generation combina recuperación de contexto relevante con un modelo de lenguaje que utiliza ese contexto para formular respuestas más precisas y fundamentadas.
+
+\section{LangChain como capa de orquestación}
+
+LangChain se utilizará como capa de integración para desacoplar la selección del modelo de lenguaje, la construcción del contexto y la lógica de recuperación, facilitando cambios de proveedor sin reestructurar completamente la aplicación.

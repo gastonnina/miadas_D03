@@ -1,0 +1,27 @@
+\newpage
+\begin{center}
+  \textbf{Resumen}
+\end{center}
+
+\noindent
+La presente monografía propone el diseño e implementación de un sistema inteligente de recuperación semántica para convocatorias públicas del Sistema de Contrataciones Estatales (SICOES) de Bolivia. El problema abordado surge de las limitaciones de la búsqueda tradicional basada en coincidencias textuales, la cual puede omitir oportunidades relevantes cuando la necesidad del usuario se expresa con términos distintos a los utilizados en el objeto de contratación.
+
+El estudio se estructura bajo la metodología CRISP-DM y contempla las fases de extracción de datos públicos, limpieza y transformación del dataset, construcción de un corpus orientado a recuperación aumentada por generación, generación de embeddings y almacenamiento vectorial en PostgreSQL con la extensión pgvector. Sobre esta base se plantea una comparación entre búsqueda tradicional mediante SQL e \texttt{ILIKE}, búsqueda semántica por similitud vectorial y generación de respuestas asistida por un modelo de lenguaje a través de LangChain.
+
+La propuesta tiene un enfoque aplicado y reproducible, integrando notebooks para preparación de datos, una base de datos desplegable con Docker y una interfaz en Streamlit para consulta. Se espera que el sistema mejore la localización de convocatorias relevantes para empresas y proveedores, aportando además un marco técnico y académico para futuras extensiones, como el enriquecimiento con documentos complementarios y estrategias híbridas de recuperación.
+
+\bigskip
+\noindent \textbf{Palabras clave:} recuperación semántica, SICOES, contrataciones públicas, pgvector, PostgreSQL, LangChain, RAG.
+
+\newpage
+\section*{Abstract}
+
+\noindent
+This monograph proposes the design and implementation of an intelligent semantic retrieval system for public procurement calls published in Bolivia's State Procurement System (SICOES). The problem addressed arises from the limitations of traditional keyword-based search, which may miss relevant opportunities when the user's need is expressed with terms different from those used in the procurement description.
+
+The study follows the CRISP-DM methodology and includes public data extraction, dataset cleaning and transformation, construction of a retrieval-oriented corpus, embedding generation, and vector storage in PostgreSQL with the pgvector extension. Based on this architecture, the project compares traditional SQL search using \texttt{ILIKE}, semantic search through vector similarity, and answer generation assisted by a language model through LangChain.
+
+The proposal has an applied and reproducible orientation, integrating notebooks for data preparation, a Docker-based database setup, and a Streamlit interface for consultation. The expected outcome is a system that improves the discovery of relevant procurement opportunities for companies and suppliers, while also providing a technical and academic foundation for future extensions such as document enrichment and hybrid retrieval strategies.
+
+\bigskip
+\noindent \textbf{Keywords:} semantic retrieval, SICOES, public procurement, pgvector, PostgreSQL, LangChain, RAG.

@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: sicoes-rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sicoes_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
