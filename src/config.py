@@ -1,8 +1,8 @@
 """Configuracion central del proyecto."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-import os
 
 from dotenv import load_dotenv
 
@@ -14,6 +14,10 @@ DATA_DIR = ROOT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 RAG_DIR = DATA_DIR / "rag"
+EVALUATION_DIR = DATA_DIR / "evaluation"
+OUTPUTS_DIR = ROOT_DIR / "outputs"
+FIGURES_DIR = OUTPUTS_DIR / "figures"
+TABLES_DIR = OUTPUTS_DIR / "tables"
 
 RAW_JSONL_PATH = RAW_DIR / "sicoes_convocatorias_raw.jsonl"
 RAW_PARQUET_PATH = RAW_DIR / "sicoes_convocatorias_raw.parquet"
@@ -25,7 +29,17 @@ PROCESSED_CSV_EXPORT_PATH = PROCESSED_DIR / "sicoes_convocatorias_clean.csv"
 RAG_PARQUET_PATH = RAG_DIR / "sicoes_convocatorias_rag.parquet"
 RAG_CSV_EXPORT_PATH = RAG_DIR / "sicoes_convocatorias_rag.csv"
 
-VECTOR_STORE_DIR = ROOT_DIR / "outputs" / "vector_store"
+EVALUATION_DEV_PATH = EVALUATION_DIR / "queries_dev.csv"
+EVALUATION_VAL_PATH = EVALUATION_DIR / "queries_val.csv"
+EVALUATION_TEST_PATH = EVALUATION_DIR / "queries_test.csv"
+
+PRIMARY_RAW_PATH = RAW_PARQUET_PATH
+PRIMARY_PROCESSED_PATH = PROCESSED_PARQUET_PATH
+PRIMARY_RAG_PATH = RAG_PARQUET_PATH
+
+RAG_TEXT_COLUMN = "texto_rag"
+RAG_ID_COLUMN = "document_id"
+RAG_PRIMARY_KEY = "cuce"
 
 
 @dataclass(slots=True)
@@ -43,6 +57,7 @@ class Settings:
     )
     llm_provider: str = os.getenv("LLM_PROVIDER", "gemini")
     llm_model: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+    retrieval_top_k: int = int(os.getenv("RETRIEVAL_TOP_K", "5"))
 
 
 settings = Settings()

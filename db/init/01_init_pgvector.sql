@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS convocatorias (
     archivos_disponibles TEXT NULL,
     ficha_url TEXT NULL,
     texto_rag TEXT NOT NULL,
+    metadata_json JSONB NULL,
     embedding VECTOR(384) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

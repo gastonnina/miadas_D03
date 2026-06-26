@@ -47,6 +47,7 @@ SICOES
 * Implementar una busqueda semantica de convocatorias.
 * Implementar una linea base SQL con `ILIKE`.
 * Evaluar busqueda tradicional, busqueda semantica y una opcion hibrida.
+* Definir un diseno experimental reproducible para retrieval y RAG.
 * Generar documentacion academica en LaTeX.
 
 ### No incluido en esta primera version
@@ -160,6 +161,35 @@ data/rag/sicoes_convocatorias_rag.parquet
 
 Debe contener campos limpios y un campo `texto_rag` en lenguaje natural para embeddings, recuperacion semantica y generacion de respuestas.
 
+### Dataset de evaluacion
+
+Adicionalmente, el proyecto debe construir un dataset pequeno y curado de consultas para evaluacion de retrieval.
+
+Archivos sugeridos:
+
+```text
+data/evaluation/queries_dev.csv
+data/evaluation/queries_val.csv
+data/evaluation/queries_test.csv
+```
+
+Cada registro de evaluacion deberia incluir al menos:
+
+* `query_id`
+* `query_text`
+* `relevant_cuce` o lista de CUCE relevantes
+* `notes`
+* `categoria` opcional
+
+Decision metodologica:
+
+* En este proyecto no se usara una separacion clasica `train/val/test` de documentos como en clasificacion supervisada.
+* El corpus indexado puede contener todas las convocatorias vigentes del alcance.
+* La separacion principal para experimentacion se hara sobre consultas de evaluacion:
+  * `dev`: exploracion de errores y ajustes iniciales;
+  * `val`: comparacion de configuraciones e hiperparametros de retrieval;
+  * `test`: reporte final congelado para la monografia.
+
 Formato sugerido para `texto_rag`:
 
 ```text
@@ -196,7 +226,7 @@ Convocatoria, Documento Base de Contratacion, etc.
 ## 6. Arquitectura objetivo
 
 ```text
-CSV RAG dataset
+Parquet RAG dataset
 → PostgreSQL Docker container
 → pgvector extension
 → embeddings almacenados en PostgreSQL
@@ -280,6 +310,15 @@ Componentes:
 * LLM;
 * cadena RAG con LangChain.
 
+Nota metodologica:
+
+* El proyecto no entrena un modelo supervisado propio.
+* El equivalente al ciclo `train/val/test` de clasificacion se traslada aqui a:
+  * definicion del corpus indexado;
+  * construccion del dataset de consultas etiquetadas;
+  * ajuste de retrieval sobre `dev` y `val`;
+  * evaluacion final sobre `test`.
+
 ### 9.5 Evaluation
 
 Comparar:
@@ -289,10 +328,27 @@ Comparar:
 * generacion de respuesta con LangChain a partir del contexto recuperado;
 * opcion hibrida combinando filtros SQL con similitud vectorial.
 
+Estrategia experimental recomendada:
+
+* Indexar el corpus completo de convocatorias vigentes dentro del alcance.
+* No separar documentos en `train/val/test` salvo que se haga un experimento adicional de generalizacion temporal.
+* Separar consultas etiquetadas en `dev`, `val` y `test`.
+* Usar `dev` para inspeccion cualitativa.
+* Usar `val` para elegir:
+  * modelo de embeddings;
+  * texto indexado (`objeto_contratacion` vs `texto_rag`);
+  * `top-k`;
+  * filtros por metadata;
+  * estrategia baseline SQL vs semantic vs hybrid.
+* Usar `test` solo para el reporte final de resultados.
+
 Metricas sugeridas:
 
 * Precision@5;
 * Precision@10;
+* Recall@K;
+* MRR;
+* accuracy de recuperacion;
 * relevancia manual de resultados;
 * ejemplos cualitativos;
 * tiempo de respuesta;
@@ -332,14 +388,16 @@ Usuario → Streamlit → SQL / Vector Search → PostgreSQL + pgvector → Lang
 3. Evaluacion:
 
 ```text
-Consulta de prueba → ILIKE baseline / pgvector semantic search / hybrid search → ranking → analisis de relevancia
+Queries dev/val/test → ILIKE baseline / pgvector semantic search / hybrid search → ranking → metricas + analisis de relevancia
 ```
 
 ## 12. Lineamientos de implementacion
 
 * No mezclar extraccion, limpieza, embeddings y aplicacion en un solo notebook.
 * Mantener trazabilidad entre dataset crudo, dataset limpio y dataset RAG.
-* No borrar los CSV existentes; conservarlos como evidencia y compatibilidad.
-* Usar Parquet como formato principal versionable para trabajo analitico.
+* Usar Parquet como formato principal versionable para trabajo analitico y retrieval.
+* Tratar los CSV generados como export auxiliares locales, no como formato canonico principal.
 * No versionar artefactos pesados de bases vectoriales fuera de la base de datos si crecen demasiado.
+* Mantener separado el texto canonico del dataset, la normalizacion de EDA y el contenido final usado para retrieval.
+* Formalizar la evaluacion con consultas etiquetadas en `dev`, `val` y `test`.
 * Mantener el enfoque academico, reproducible y mantenible.

@@ -25,6 +25,23 @@ Parquet RAG dataset
 
 LangChain se mantiene como capa de orquestacion para desacoplar la logica de recuperacion y permitir cambiar de proveedor de LLM con cambios minimos.
 
+### Diagrama
+
+```mermaid
+flowchart LR
+    A[SICOES raw dataset] --> B[Clean dataset]
+    B --> C[RAG dataset parquet]
+    C --> D[Embeddings]
+    D --> E[(PostgreSQL + pgvector)]
+    Q[Consulta usuario] --> F[Keyword search ILIKE]
+    Q --> G[Semantic search]
+    E --> G
+    F --> H[Resultados]
+    G --> H[Resultados]
+    H --> I[LangChain RAG chain]
+    I --> J[Streamlit app]
+```
+
 ## Estructura
 
 ```text
@@ -100,12 +117,70 @@ Levantar la base de datos:
 docker compose up -d
 ```
 
+Verificar contenedores:
+
+```bash
+docker compose ps
+```
+
+Verificar que PostgreSQL acepta conexiones:
+
+```bash
+docker compose exec postgres pg_isready -U postgres -d sicoes_rag
+```
+
+Probar una consulta minima:
+
+```bash
+docker compose exec postgres psql -U postgres -d sicoes_rag -c "SELECT 1;"
+```
+
+Ver logs del servicio:
+
+```bash
+docker compose logs postgres
+```
+
+Seguir logs en vivo:
+
+```bash
+docker compose logs -f postgres
+```
+
 La configuracion base es:
 
 * base de datos: `sicoes_rag`
 * usuario: `postgres`
 * password: `postgres`
 * puerto: `5432`
+
+Nota para PostgreSQL 18+:
+
+* Estas imagenes esperan que el volumen se monte en `/var/lib/postgresql`, no en `/var/lib/postgresql/data`.
+* Si ya arrancaste antes con una configuracion anterior y el contenedor entra en reinicio, recrea el almacenamiento local del proyecto:
+
+```bash
+docker compose down
+rm -rf db/postgres_data
+docker compose up -d
+```
+
+Usa ese borrado solo si no necesitas conservar una base local previa.
+
+Si solo quieres detener la base:
+
+```bash
+docker compose down
+```
+
+Si quieres recrearla desde cero por un cambio de version o esquema local:
+
+```bash
+docker compose down
+rm -rf db/postgres_data
+docker compose up -d
+docker compose exec postgres pg_isready -U postgres -d sicoes_rag
+```
 
 El script [db/init/01_init_pgvector.sql](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/db/init/01_init_pgvector.sql) crea la extension `vector`, la tabla `convocatorias` y sus indices iniciales.
 
@@ -129,6 +204,20 @@ Estado actual del flujo:
 * `04_embeddings_pgvector.ipynb`: pendiente.
 * `05_rag_evaluation.ipynb`: pendiente.
 
+```mermaid
+flowchart LR
+    N1["01 extract"] --> N2["02 clean + rag"]
+    N2 --> N3["03 eda"]
+    N3 --> N4["04 embeddings + pgvector"]
+    N4 --> N5["05 rag evaluation"]
+
+    style N1 fill:#d7f5dd,stroke:#2f6b3b
+    style N2 fill:#d7f5dd,stroke:#2f6b3b
+    style N3 fill:#d7f5dd,stroke:#2f6b3b
+    style N4 fill:#fff2cc,stroke:#8a6d1d
+    style N5 fill:#fff2cc,stroke:#8a6d1d
+```
+
 ## Contrato de datos actual
 
 El proyecto mantiene dos niveles de datos persistidos:
@@ -142,6 +231,27 @@ Reglas vigentes:
 * Los `csv` generados por notebooks se consideran export auxiliares locales.
 * La normalizacion agresiva usada para frecuencia de palabras en el EDA no modifica el dataset canonico.
 * `texto_rag` conserva texto natural y enriquecido para retrieval, no una version sobrelimpia.
+* El corpus indexado para retrieval parte del dataset RAG completo dentro del alcance vigente.
+* La evaluacion experimental se separa sobre consultas etiquetadas, no sobre documentos tipo clasificacion supervisada.
+
+Splits previstos para evaluacion:
+
+* `data/evaluation/queries_dev.csv`
+* `data/evaluation/queries_val.csv`
+* `data/evaluation/queries_test.csv`
+
+## Capa `src/`
+
+La capa productiva debe consumir rutas y contratos centralizados:
+
+* [src/config.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/src/config.py): rutas canonicas, constantes de retrieval y configuracion por entorno.
+* [src/data_loader.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/src/data_loader.py): carga de datasets `processed`, `rag` y queries de evaluacion.
+
+Convenciones actuales:
+
+* `load_rag_dataset()` y `load_retrieval_corpus()` priorizan `parquet`.
+* `load_evaluation_queries(split)` esta pensado para `dev`, `val` y `test`.
+* Los CSV siguen disponibles solo como compatibilidad local, no como fuente principal de ingestion.
 
 El flujo recomendado es usar VS Code con la extension de Jupyter y seleccionar el kernel del `.venv`.
 
@@ -199,6 +309,23 @@ Consulta por similitud semantica usando embeddings y operadores vectoriales de `
 ### RAG answer generation
 
 Recupera convocatorias relevantes, construye contexto y genera una respuesta con LangChain y un LLM configurable.
+
+## Diseno experimental
+
+Este proyecto no sigue el esquema clasico de `train/val/test` de documentos usado en clasificacion supervisada.
+
+La estructura recomendada es:
+
+* `corpus indexado`: todas las convocatorias vigentes dentro del alcance.
+* `queries_dev`: exploracion cualitativa y depuracion inicial.
+* `queries_val`: comparacion de configuraciones y tuning de retrieval.
+* `queries_test`: reporte final congelado para la monografia.
+
+En la fase de evaluacion se compararan:
+
+* baseline SQL con `ILIKE`
+* semantic retrieval con embeddings + `pgvector`
+* estrategia hibrida si aporta valor
 
 ## Estado actual
 
