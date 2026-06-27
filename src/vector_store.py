@@ -71,6 +71,16 @@ def _require_sentence_transformers() -> None:
         )
 
 
+def _validate_embedding_dimension(embedding: Sequence[float]) -> None:
+    """Falla temprano si la dimension del embedding no coincide con el esquema."""
+    if len(embedding) != EMBEDDING_DIMENSION:
+        raise ValueError(
+            "La dimension del embedding no coincide con el esquema pgvector. "
+            f"Esperada: {EMBEDDING_DIMENSION}. Obtenida: {len(embedding)}. "
+            "Revisa `EMBEDDING_MODEL` o ajusta el esquema de la columna `embedding`."
+        )
+
+
 convocatorias_table = Table(
     "convocatorias",
     metadata,
@@ -200,7 +210,10 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
         return []
     model = get_embedding_model()
     embeddings = model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
-    return embeddings.tolist()
+    embedding_list = embeddings.tolist()
+    if embedding_list:
+        _validate_embedding_dimension(embedding_list[0])
+    return embedding_list
 
 
 def prepare_convocatoria_record(
@@ -259,6 +272,7 @@ def insert_convocatorias(
     for index, row in enumerate(normalized_rows):
         existing_embedding = row.get("embedding")
         if existing_embedding is not None:
+            _validate_embedding_dimension(existing_embedding)
             embeddings_by_index[index] = existing_embedding
             continue
         if generate_missing_embeddings:

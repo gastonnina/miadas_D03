@@ -34,7 +34,7 @@ RAG_REQUIRED_COLUMNS = {
     RAG_TEXT_COLUMN,
 }
 
-EVALUATION_REQUIRED_COLUMNS = {"query_id", "query_text"}
+EVALUATION_REQUIRED_COLUMNS = {"query_id", "query_text", "relevant_cuce"}
 
 
 def load_csv(path: PathLike) -> pd.DataFrame:

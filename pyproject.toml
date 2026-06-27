@@ -29,10 +29,12 @@ dependencies = [
     "streamlit>=1.36,<2.0",
     "torch>=2.4,<3.0",
     "tqdm>=4.66,<5.0",
+    "wordcloud>=1.9,<2.0",
 ]
 
 [dependency-groups]
 dev = [
+    "ipywidgets>=8.1.8",
     "pytest>=8.3,<9.0",
     "ruff>=0.5,<1.0",
 ]

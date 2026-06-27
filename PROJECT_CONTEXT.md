@@ -301,7 +301,7 @@ Procesos:
 
 Componentes:
 
-* modelo de embeddings `sentence-transformers/all-MiniLM-L6-v2`;
+* modelo de embeddings `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`;
 * PostgreSQL;
 * extension pgvector;
 * retriever semantico;

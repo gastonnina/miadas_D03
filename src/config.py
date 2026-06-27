@@ -53,7 +53,7 @@ class Settings:
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "sentence_transformers")
     embedding_model: str = os.getenv(
         "EMBEDDING_MODEL",
-        "sentence-transformers/all-MiniLM-L6-v2",
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     )
     llm_provider: str = os.getenv("LLM_PROVIDER", "gemini")
     llm_model: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")

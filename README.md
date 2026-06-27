@@ -7,7 +7,7 @@ Proyecto de monografia de diplomado para construir un sistema inteligente de rec
 El proyecto busca comparar tres modos de consulta sobre convocatorias publicas:
 
 * `keyword search`: busqueda tradicional con SQL e `ILIKE`.
-* `semantic search`: busqueda por similitud vectorial usando embeddings almacenados en PostgreSQL con `pgvector`.
+* `semantic search`: busqueda por similitud vectorial usando embeddings multilingues almacenados en PostgreSQL con `pgvector`.
 * `RAG answer generation`: recuperacion de contexto y respuesta generada por un LLM orquestado con LangChain.
 
 ## Arquitectura
@@ -153,6 +153,7 @@ La configuracion base es:
 * usuario: `postgres`
 * password: `postgres`
 * puerto: `5432`
+* embedding por defecto: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 
 Nota para PostgreSQL 18+:
 
@@ -194,6 +195,8 @@ Flujo sugerido:
 4. [04_embeddings_pgvector.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/04_embeddings_pgvector.ipynb): base para carga en PostgreSQL y generacion de embeddings.
 5. [05_rag_evaluation.ipynb](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/notebooks/05_rag_evaluation.ipynb): evaluacion comparativa de modos de busqueda.
 
+Si cambias `EMBEDDING_MODEL`, debes reejecutar completamente el notebook `04_embeddings_pgvector.ipynb` para regenerar e insertar embeddings consistentes con el nuevo modelo.
+
 Estado actual del flujo:
 
 * `01_extract_sicoes.ipynb`: completado.
@@ -201,8 +204,8 @@ Estado actual del flujo:
   * `objeto_contratacion` ya se extrae desde la columna correcta del raw.
   * `modalidad` ya reconoce casos como `CND1`.
 * `03_eda.ipynb`: completado y validado sobre el dataset corregido.
-* `04_embeddings_pgvector.ipynb`: pendiente.
-* `05_rag_evaluation.ipynb`: pendiente.
+* `04_embeddings_pgvector.ipynb`: funcional, con carga validada en PostgreSQL; pendiente refinar relevancia semantica.
+* `05_rag_evaluation.ipynb`: implementado con dataset curado de queries y export de resultados.
 
 ```mermaid
 flowchart LR
@@ -214,8 +217,8 @@ flowchart LR
     style N1 fill:#d7f5dd,stroke:#2f6b3b
     style N2 fill:#d7f5dd,stroke:#2f6b3b
     style N3 fill:#d7f5dd,stroke:#2f6b3b
-    style N4 fill:#fff2cc,stroke:#8a6d1d
-    style N5 fill:#fff2cc,stroke:#8a6d1d
+    style N4 fill:#d7f5dd,stroke:#2f6b3b
+    style N5 fill:#d7f5dd,stroke:#2f6b3b
 ```
 
 ## Contrato de datos actual
@@ -233,12 +236,28 @@ Reglas vigentes:
 * `texto_rag` conserva texto natural y enriquecido para retrieval, no una version sobrelimpia.
 * El corpus indexado para retrieval parte del dataset RAG completo dentro del alcance vigente.
 * La evaluacion experimental se separa sobre consultas etiquetadas, no sobre documentos tipo clasificacion supervisada.
+* El embedding por defecto prioriza cobertura multilingue en espanol sin cambiar la dimension `vector(384)` del esquema actual.
 
 Splits previstos para evaluacion:
 
 * `data/evaluation/queries_dev.csv`
 * `data/evaluation/queries_val.csv`
 * `data/evaluation/queries_test.csv`
+
+Contrato minimo esperado para cada query de evaluacion:
+
+* `query_id`
+* `query_text`
+* `relevant_cuce`
+* `metadata_filters` opcional en formato `campo=valor;campo2=valor2`
+
+Artefactos actuales:
+
+* `data/evaluation/queries_dev.csv`
+* `data/evaluation/queries_val.csv`
+* `data/evaluation/queries_test.csv`
+* `outputs/evaluation_results.csv` generado por el notebook `05`
+* `outputs/evaluation_summary.csv` generado por el notebook `05`
 
 ## Capa `src/`
 
