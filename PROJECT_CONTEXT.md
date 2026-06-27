@@ -246,6 +246,11 @@ Notas:
 
 Disenar e implementar un sistema inteligente de recuperacion semantica para convocatorias publicas del SICOES mediante tecnicas de Procesamiento de Lenguaje Natural, embeddings, PostgreSQL + pgvector y Retrieval-Augmented Generation, orientado a facilitar la busqueda de oportunidades de contratacion publica para empresas y proveedores.
 
+Nota metodologica:
+
+* El proyecto no presupone que la busqueda semantica pura supere siempre a la busqueda keyword.
+* La hipotesis operativa es que una arquitectura con retrieval configurable y/o hibrido ofrece una base mas robusta para consulta y RAG en el dominio SICOES.
+
 ## 8. Objetivos especificos
 
 1. Extraer convocatorias publicas vigentes del portal SICOES y almacenarlas en un dataset crudo reproducible.

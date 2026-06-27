@@ -57,7 +57,12 @@ class Settings:
     )
     llm_provider: str = os.getenv("LLM_PROVIDER", "gemini")
     llm_model: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+    llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+    google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     retrieval_top_k: int = int(os.getenv("RETRIEVAL_TOP_K", "5"))
+    default_retrieval_mode: str = os.getenv("DEFAULT_RETRIEVAL_MODE", "keyword")
+    rag_max_context_chars: int = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "12000"))
 
 
 settings = Settings()

@@ -9,7 +9,7 @@ from typing import Any, Callable
 import pandas as pd
 
 from src.data_loader import load_evaluation_queries
-from src.vector_store import keyword_search, semantic_search
+from src.vector_store import hybrid_search, keyword_search, semantic_search
 
 SearchFunction = Callable[[str, int | None, dict[str, Any] | None], list[dict[str, Any]]]
 
@@ -256,3 +256,8 @@ def evaluate_keyword_search(split: str = "dev", k: int = 5) -> list[EvaluationRe
 def evaluate_semantic_search(split: str = "dev", k: int = 5) -> list[EvaluationResult]:
     """Evalua la busqueda semantica sobre pgvector."""
     return evaluate_search_method(semantic_search, method="semantic", split=split, k=k)
+
+
+def evaluate_hybrid_search(split: str = "dev", k: int = 5) -> list[EvaluationResult]:
+    """Evalua la busqueda hibrida keyword + reranking semantico."""
+    return evaluate_search_method(hybrid_search, method="hybrid", split=split, k=k)

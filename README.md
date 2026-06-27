@@ -197,6 +197,15 @@ Flujo sugerido:
 
 Si cambias `EMBEDDING_MODEL`, debes reejecutar completamente el notebook `04_embeddings_pgvector.ipynb` para regenerar e insertar embeddings consistentes con el nuevo modelo.
 
+Variables utiles para RAG:
+
+* `LLM_PROVIDER=gemini|openai`
+* `LLM_MODEL=<modelo>`
+* `LLM_TEMPERATURE=0.1`
+* `DEFAULT_RETRIEVAL_MODE=keyword|semantic|hybrid`
+* `RAG_MAX_CONTEXT_CHARS=12000`
+* `GOOGLE_API_KEY=` o `OPENAI_API_KEY=`
+
 Estado actual del flujo:
 
 * `01_extract_sicoes.ipynb`: completado.
@@ -206,6 +215,7 @@ Estado actual del flujo:
 * `03_eda.ipynb`: completado y validado sobre el dataset corregido.
 * `04_embeddings_pgvector.ipynb`: funcional, con carga validada en PostgreSQL; pendiente refinar relevancia semantica.
 * `05_rag_evaluation.ipynb`: implementado con dataset curado de queries y export de resultados.
+* `src/rag_chain.py`: implementado con retrieval configurable y proveedor LLM configurable.
 
 ```mermaid
 flowchart LR

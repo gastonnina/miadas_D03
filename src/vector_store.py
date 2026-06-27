@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
+import re
 from typing import Any
 
 try:
@@ -29,6 +30,7 @@ from sqlalchemy import (
     Table,
     Text,
     and_,
+    case,
     create_engine,
     func,
     or_,
@@ -51,6 +53,27 @@ EMBEDDING_DIMENSION = 384
 SQL_INIT_PATH = ROOT_DIR / "db" / "init" / "01_init_pgvector.sql"
 
 metadata = MetaData()
+TOKEN_PATTERN = re.compile(r"[A-Za-z0-9ÁÉÍÓÚáéíóúÑñÜü]+")
+SPANISH_STOPWORDS = {
+    "a",
+    "al",
+    "con",
+    "de",
+    "del",
+    "e",
+    "el",
+    "en",
+    "la",
+    "las",
+    "los",
+    "o",
+    "para",
+    "por",
+    "u",
+    "un",
+    "una",
+    "y",
+}
 
 
 def _require_pgvector() -> None:
@@ -175,6 +198,40 @@ def _build_search_payload(row: Any, score_field: str, score_value: float | None)
     if score_value is not None:
         payload[score_field] = float(score_value)
     return payload
+
+
+def _tokenize_query(query: str) -> list[str]:
+    """Tokeniza una consulta libre y elimina stopwords muy basicas."""
+    tokens = [token.lower() for token in TOKEN_PATTERN.findall(query or "")]
+    filtered_tokens = [token for token in tokens if len(token) > 2 and token not in SPANISH_STOPWORDS]
+    return list(dict.fromkeys(filtered_tokens))
+
+
+def _build_keyword_score_and_clause(query: str) -> tuple[Any, Any] | None:
+    """Construye score keyword basado en coincidencia por tokens."""
+    tokens = _tokenize_query(query)
+    if not tokens:
+        return None
+
+    searchable_columns = [
+        convocatorias_table.c.texto_rag,
+        convocatorias_table.c.objeto_contratacion,
+        convocatorias_table.c.entidad,
+        convocatorias_table.c.cuce,
+    ]
+
+    token_score_expressions: list[Any] = []
+    token_match_expressions: list[Any] = []
+    for token in tokens:
+        token_pattern = f"%{token}%"
+        token_matches = [column.ilike(token_pattern) for column in searchable_columns]
+        token_match = or_(*token_matches)
+        token_match_expressions.append(token_match)
+        token_score_expressions.append(case((token_match, 1), else_=0))
+
+    score_expression = sum(token_score_expressions[1:], token_score_expressions[0]).label("score")
+    any_match_expression = or_(*token_match_expressions)
+    return score_expression, any_match_expression
 
 
 @lru_cache(maxsize=1)
@@ -362,21 +419,49 @@ def keyword_search(
     k: int | None = None,
     metadata_filters: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Ejecuta busqueda keyword usando ILIKE sobre campos relevantes."""
+    """Ejecuta busqueda keyword con tokenizacion y score por coincidencia."""
     top_k = k or settings.retrieval_top_k
-    search_pattern = f"%{query.strip()}%"
+    keyword_components = _build_keyword_score_and_clause(query)
+    if keyword_components is None:
+        return []
 
+    score_expression, any_match_expression = keyword_components
+    statement = select(convocatorias_table, score_expression).where(any_match_expression)
+    statement = _apply_common_filters(statement, metadata_filters)
+    statement = statement.order_by(
+        score_expression.desc(),
+        convocatorias_table.c.fecha_publicacion.desc().nullslast(),
+    ).limit(top_k)
+
+    engine = connect_db()
+    with engine.begin() as connection:
+        rows = connection.execute(statement).all()
+
+    return [_build_search_payload(row, "score", row.score) for row in rows]
+
+
+def hybrid_search(
+    query: str,
+    k: int | None = None,
+    metadata_filters: dict[str, Any] | None = None,
+    *,
+    candidate_pool_size: int = 50,
+) -> list[dict[str, Any]]:
+    """Recupera candidatos keyword y los reranquea semanticamente."""
+    _require_pgvector()
+    top_k = k or settings.retrieval_top_k
+    keyword_candidates = keyword_search(query, k=candidate_pool_size, metadata_filters=metadata_filters)
+    candidate_cuces = [item["cuce"] for item in keyword_candidates if item.get("cuce")]
+    if not candidate_cuces:
+        return semantic_search(query, k=top_k, metadata_filters=metadata_filters)
+
+    query_embedding = generate_embeddings([query])[0]
+    distance = convocatorias_table.c.embedding.cosine_distance(query_embedding)
     statement = (
-        select(convocatorias_table)
-        .where(
-            or_(
-                convocatorias_table.c.texto_rag.ilike(search_pattern),
-                convocatorias_table.c.objeto_contratacion.ilike(search_pattern),
-                convocatorias_table.c.entidad.ilike(search_pattern),
-                convocatorias_table.c.cuce.ilike(search_pattern),
-            )
-        )
-        .order_by(convocatorias_table.c.fecha_publicacion.desc().nullslast())
+        select(convocatorias_table, distance.label("distance"))
+        .where(convocatorias_table.c.embedding.is_not(None))
+        .where(convocatorias_table.c.cuce.in_(candidate_cuces))
+        .order_by(distance.asc())
         .limit(top_k)
     )
     statement = _apply_common_filters(statement, metadata_filters)
@@ -385,4 +470,4 @@ def keyword_search(
     with engine.begin() as connection:
         rows = connection.execute(statement).all()
 
-    return [_build_search_payload(row, "score", None) for row in rows]
+    return [_build_search_payload(row, "distance", row.distance) for row in rows]
