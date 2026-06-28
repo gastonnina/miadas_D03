@@ -181,6 +181,11 @@ Cada registro de evaluacion deberia incluir al menos:
 * `notes`
 * `categoria` opcional
 
+Nota metodologica de evaluacion:
+
+* Las etiquetas de relevancia deben revisarse manualmente y pueden contener multiples `CUCE` relevantes por consulta.
+* El objetivo del dataset `dev/val/test` no es forzar un unico resultado correcto, sino reflejar un criterio de relevancia razonable y reproducible para el dominio.
+
 Decision metodologica:
 
 * En este proyecto no se usara una separacion clasica `train/val/test` de documentos como en clasificacion supervisada.

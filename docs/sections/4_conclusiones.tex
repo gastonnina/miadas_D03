@@ -11,12 +11,23 @@
 
 \section{Conclusiones}
 
-La propuesta del sistema plantea una alternativa más flexible que la búsqueda textual exacta para localizar convocatorias relevantes dentro del SICOES. La integración de embeddings, PostgreSQL con pgvector y LangChain establece una base técnica sólida para una solución reproducible y extensible.
+La implementación desarrollada confirma la viabilidad técnica de un sistema reproducible para consulta de convocatorias del SICOES mediante PostgreSQL con pgvector, notebooks de preparación de datos, evaluación controlada y una interfaz funcional en Streamlit. El proyecto logró completar el pipeline de extracción, limpieza, construcción de corpus RAG, indexación vectorial, evaluación comparativa y consulta asistida por LangChain.
+
+Los resultados experimentales muestran, sin embargo, que la búsqueda semántica pura no supera al baseline keyword sobre el corpus vigente y el conjunto curado de consultas utilizado. La línea base keyword basada en tokens obtuvo el mejor desempeño en términos de recuperación temprana, mientras que la estrategia híbrida ofreció una alternativa intermedia y más flexible para una futura capa RAG. Esto constituye un hallazgo relevante: en el dominio SICOES, la coincidencia léxica exacta sigue siendo altamente informativa debido al peso de términos administrativos, médicos, técnicos y geográficos muy específicos.
 
 \section{Aportes}
 
-Entre los principales aportes esperados se encuentran la organización de un pipeline reproducible de datos, la definición de una línea base SQL comparable, y la construcción de un marco académico para evaluar recuperación semántica aplicada a contrataciones públicas.
+Entre los principales aportes del trabajo se encuentran:
+
+\begin{itemize}
+    \item la organización de un pipeline reproducible desde datos crudos hasta corpus orientado a retrieval;
+    \item la implementación de una base vectorial en PostgreSQL con \texttt{pgvector};
+    \item la definición de una línea base keyword fuerte y comparable frente a estrategias semánticas e híbridas;
+    \item la construcción de un dataset curado de consultas \texttt{dev}, \texttt{val} y \texttt{test};
+    \item la implementación de una cadena RAG configurable por modo de recuperación y proveedor de LLM;
+    \item una interfaz funcional en Streamlit para explorar retrieval y generación asistida.
+\end{itemize}
 
 \section{Trabajo futuro}
 
-Como líneas futuras se consideran la incorporación de documentos adicionales de ficha, el enriquecimiento del corpus con PDFs, la experimentación con modelos de embeddings alternativos y la evaluación de estrategias híbridas más avanzadas.
+Como líneas futuras se consideran la incorporación de documentos adicionales de ficha y PDFs, el enriquecimiento del corpus con información documental más extensa, la experimentación con modelos de embeddings alternativos y rerankers, la ampliación del dataset de evaluación con etiquetas de relevancia más ricas, y la comparación de respuestas RAG producidas a partir de retrieval keyword, híbrido y semántico bajo protocolos de evaluación más amplios.

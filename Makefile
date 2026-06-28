@@ -65,7 +65,8 @@ clean:
 		$(DOCS_DIR)/*.out \
 		$(DOCS_DIR)/*.run.xml \
 		$(DOCS_DIR)/*.synctex.gz \
-		$(DOCS_DIR)/*.toc
+		$(DOCS_DIR)/*.toc \
+		$(DOCS_DIR)/sections/*.aux
 
 format:
 	@command -v $(LATEXINDENT) >/dev/null 2>&1 || { \

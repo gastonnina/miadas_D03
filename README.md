@@ -217,6 +217,11 @@ Estado actual del flujo:
 * `05_rag_evaluation.ipynb`: implementado con dataset curado de queries y export de resultados.
 * `src/rag_chain.py`: implementado con retrieval configurable y proveedor LLM configurable.
 
+Nota de consistencia:
+
+* `04_embeddings_pgvector.ipynb` sigue siendo válido como notebook de ingestión, pero sus ejemplos de retrieval pueden quedar históricos respecto a los ajustes posteriores en `src.vector_store`.
+* La referencia final para comparar `keyword`, `semantic` y `hybrid` es `05_rag_evaluation.ipynb` junto con `outputs/evaluation_summary.csv`.
+
 ```mermaid
 flowchart LR
     N1["01 extract"] --> N2["02 clean + rag"]
@@ -247,6 +252,7 @@ Reglas vigentes:
 * El corpus indexado para retrieval parte del dataset RAG completo dentro del alcance vigente.
 * La evaluacion experimental se separa sobre consultas etiquetadas, no sobre documentos tipo clasificacion supervisada.
 * El embedding por defecto prioriza cobertura multilingue en espanol sin cambiar la dimension `vector(384)` del esquema actual.
+* El paso `clean` aplica un filtro de CUCE canónico; actualmente deja fuera 5 filas del `raw` por formato inconsistente con el patrón esperado.
 
 Splits previstos para evaluacion:
 
@@ -268,6 +274,13 @@ Artefactos actuales:
 * `data/evaluation/queries_test.csv`
 * `outputs/evaluation_results.csv` generado por el notebook `05`
 * `outputs/evaluation_summary.csv` generado por el notebook `05`
+
+Nota de trazabilidad actual:
+
+* `data/raw/sicoes_convocatorias_raw.parquet`: `1433` filas
+* `data/processed/sicoes_convocatorias_clean.parquet`: `1429` filas
+* `data/rag/sicoes_convocatorias_rag.parquet`: `1429` filas
+* 5 registros de `raw` quedan fuera del dataset canónico porque su `CUCE` no coincide con el regex usado en `02_clean_transform_rag.ipynb`: `^\\d{2}-\\d{4}-\\d{2}-\\d{6,}-\\d-\\d$`
 
 ## Capa `src/`
 
@@ -294,11 +307,24 @@ No es necesario instalar `jupyterlab` o `notebook` como dependencias del proyect
 
 ## Streamlit
 
-La aplicacion actual es un placeholder de scaffold. Para ejecutarla:
+La aplicacion actual ya consume la capa productiva `src/` y permite:
+
+* consultar convocatorias con modo `keyword`, `semantic` o `hybrid`
+* inspeccionar las fuentes recuperadas
+* ver el contexto RAG construido
+* generar respuesta RAG si existe API key configurada
+
+Para ejecutarla:
 
 ```bash
 streamlit run app/streamlit_app.py
 ```
+
+Requisitos practicos:
+
+* PostgreSQL + pgvector levantado con `docker compose up -d`
+* `.env` configurado
+* `GOOGLE_API_KEY` o `OPENAI_API_KEY` solo si quieres generación RAG
 
 ## Monografia en LaTeX
 

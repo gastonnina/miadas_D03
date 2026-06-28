@@ -25,11 +25,11 @@ Esta arquitectura también incorpora una línea base de búsqueda SQL utilizando
 
 \section{Preparación de datos}
 
-La preparación contempla limpieza de HTML, normalización de columnas, deduplicación, conversión de fechas, construcción de \texttt{document\_id} y generación del campo \texttt{texto\_rag}. Los datasets se mantienen en CSV y Parquet para trazabilidad y compatibilidad.
+La preparación contempla limpieza de HTML, normalización de columnas, deduplicación, conversión de fechas, construcción de \texttt{document\_id} y generación del campo \texttt{texto\_rag}. El proyecto conserva Parquet como formato principal versionable del corpus, mientras que los CSV se usan sólo como salidas auxiliares de evaluación y trazabilidad.
 
 \section{Modelado y almacenamiento vectorial}
 
-Se empleará un modelo inicial de embeddings multilingüe \texttt{sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}, cuyas representaciones de 384 dimensiones se almacenarán en PostgreSQL con \texttt{pgvector}. Esta configuración mejora la cobertura para consultas en español sin alterar el esquema actual de almacenamiento vectorial, y permite búsquedas semánticas, filtros estructurados y estrategias híbridas.
+Se emplea un modelo inicial de embeddings multilingüe de la familia Sentence Transformers, variante \texttt{paraphrase-multilingual-MiniLM-L12-v2}, cuyas representaciones de 384 dimensiones se almacenan en PostgreSQL con \texttt{pgvector}. Esta configuración mejora la cobertura para consultas en español sin alterar el esquema actual de almacenamiento vectorial, y permite búsquedas semánticas, filtros estructurados y estrategias híbridas.
 
 \section{Evaluación}
 
@@ -41,4 +41,6 @@ La evaluación se centrará en tres modos de consulta:
     \item Generación de respuestas mediante RAG con contexto recuperado.
 \end{enumerate}
 
-Las métricas previstas incluyen Precision@5, Precision@10, relevancia manual y análisis cualitativo de resultados.
+Las métricas consideradas incluyen Precision@5, Recall@5, MRR, hit@5 y análisis cualitativo de resultados. Para esta iteración se construyó un conjunto curado de consultas \texttt{dev}, \texttt{val} y \texttt{test}, permitiendo comparar búsquedas keyword, semánticas e híbridas.
+
+Los resultados obtenidos indican que la búsqueda keyword basada en tokens constituye la línea base más fuerte sobre el corpus actual, seguida por una estrategia híbrida con reranking semántico. La búsqueda semántica pura presenta menor desempeño en las consultas curadas, lo que sugiere que el dominio SICOES mantiene una alta dependencia de terminología específica y coincidencia léxica exacta. En consecuencia, la arquitectura final del proyecto adopta retrieval configurable y no presupone la superioridad universal del enfoque semántico puro.
