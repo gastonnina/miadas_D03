@@ -30,10 +30,17 @@ htmlcov/
 # Data artifacts
 data/**/*.csv
 data/raw/*.jsonl
+data/external/raw_downloads/
+data/external/curated_docs/**
+!data/external/curated_docs/.gitkeep
+!data/external/curated_docs/rename_manifest.csv
+data/intermediate/curated_docs_text/
 !data/raw/.gitkeep
+!data/evaluation/*.csv
 !data/processed/.gitkeep
 !data/rag/.gitkeep
 outputs/**/*.csv
+outputs/run_summaries/
 db/postgres_data/
 outputs/vector_store/
 

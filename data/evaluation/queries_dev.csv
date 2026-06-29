@@ -1,0 +1,7 @@
+query_id,query_text,relevant_cuce,metadata_filters,notes,categoria
+dev_001,medicamentos para hospital en santa cruz,"26-0417-03-1669697-1-1,26-1701-00-1668542-1-1,26-1701-00-1668743-1-1,26-1701-00-1668778-1-1",,Consulta farmacologica hospitalaria,medicamentos
+dev_002,reactivos de laboratorio clinico para hospital,"26-0902-21-1669603-1-1,26-1705-00-1669336-1-1,26-1101-04-1669617-1-1",,Reactivos de laboratorio hospitalario,reactivos
+dev_003,mantenimiento de vias urbanas con cemento en tupiza,26-1519-00-1669672-1-1,,Caso de mantenimiento urbano,infraestructura
+dev_004,software libre para gestion clinica en salud,26-0046-38-1660991-1-1,,Caso unico de software en salud,software
+dev_005,alcantarillado pluvial en la paz,"26-1201-00-1668159-1-1,26-1201-00-1669153-1-1",,Consulta de obra publica urbana,obras
+dev_006,equipamiento sub alcaldia tupiza papel,26-1519-00-1669618-1-1,,Compra administrativa de equipamiento,bienes

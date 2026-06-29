@@ -1,0 +1,4 @@
+query_id,query_text,relevant_cuce,metadata_filters,notes,categoria
+test_001,medicamentos e insumos para centro de salud de quime,26-1219-00-1669640-1-1,,Consulta municipal de abastecimiento,medicamentos
+test_002,reactivos para anatomia patologica hospital del niño,26-0903-17-1669546-1-1,,Reactivos hospitalarios especializados,reactivos
+test_003,sistema integrado de gestion clinica con software libre,26-0046-38-1660991-1-1,,Consulta tecnologica en salud,software

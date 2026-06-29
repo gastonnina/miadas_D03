@@ -205,6 +205,7 @@ Variables utiles para RAG:
 * `DEFAULT_RETRIEVAL_MODE=keyword|semantic|hybrid`
 * `RAG_MAX_CONTEXT_CHARS=12000`
 * `GOOGLE_API_KEY=` o `OPENAI_API_KEY=`
+* `NTFY_ENABLED=true`, `NTFY_SERVER=https://ntf.sh`, `NTFY_TOPIC=...` si quieres notificaciones al terminar procesos largos
 
 Estado actual del flujo:
 
@@ -216,6 +217,158 @@ Estado actual del flujo:
 * `04_embeddings_pgvector.ipynb`: funcional, con carga validada en PostgreSQL; pendiente refinar relevancia semantica.
 * `05_rag_evaluation.ipynb`: implementado con dataset curado de queries y export de resultados.
 * `src/rag_chain.py`: implementado con retrieval configurable y proveedor LLM configurable.
+
+## Utilidad Tampermonkey
+
+Para acelerar la descarga manual de anexos de SICOES, el repositorio incluye un userscript de Tampermonkey en [docs/code/sicoes_download_dbc.user.js](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/docs/code/sicoes_download_dbc.user.js:1).
+
+Este script agrega un boton flotante `Descargar DBC visibles` y hace click automatico sobre los enlaces visibles cuyo texto sea `Documento Base de Contratacion`, con una pausa configurable entre descargas. La consola del navegador muestra el orden y el `CUCE` de cada descarga disparada.
+
+Cuando exportes el log CSV del userscript y tengas una carpeta con archivos descargados de nombres aleatorios, puedes renombrarlos localmente con [scripts/rename_sicoes_downloads.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/scripts/rename_sicoes_downloads.py:1).
+
+Ejemplo:
+
+```bash
+python3 scripts/rename_sicoes_downloads.py \
+  --downloads-dir /ruta/a/descargas \
+  --log-csv /ruta/a/sicoes_dbc_log.csv \
+  --output-dir /ruta/a/dbc_renombrados
+```
+
+Por defecto el script hace `dry-run`. Para aplicar cambios reales usa `--apply`; para copiar en vez de mover usa `--copy`.
+
+Si el log de Tampermonkey tiene mas filas que archivos realmente descargados, el script ya no falla por defecto. Procesa los pares disponibles y deja el resto marcado como `missing_download` en `rename_manifest.csv`. Si quieres comportamiento estricto, usa `--strict-counts`.
+
+En terminal interactiva, el script muestra una barra de progreso por archivo.
+
+El renombrado contempla `pdf`, `docx`, `doc` y `rar`.
+
+## Extracción documental
+
+Para construir un corpus enriquecido desde `pdf`, `docx`, `doc` o `rar` con documentos ofimaticos dentro, el repositorio incluye [scripts/extract_documents_to_text.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/scripts/extract_documents_to_text.py:1).
+
+Recomendación de formato:
+
+* usar `txt` como formato canónico de extracción para el pipeline
+* reservar `markdown` sólo como formato opcional de lectura humana
+
+`txt` es preferible porque evita meter ruido de marcado en embeddings y simplifica trazabilidad, limpieza y concatenación documental.
+
+Ejemplo:
+
+```bash
+python3 scripts/extract_documents_to_text.py \
+  --input-dir data/external/curated_docs \
+  --output-dir data/intermediate/curated_docs_text
+```
+
+El script:
+
+* extrae `pdf` con `pdftotext`
+* extrae `docx` con `pandoc`
+* extrae `doc` con `libreoffice`
+* descomprime `rar` con `unrar` y procesa los documentos soportados encontrados dentro
+* preserva estructura relativa de carpetas
+* genera `extraction_manifest.csv`
+* marca `warning_low_text` cuando el archivo parece escaneado o requiere OCR
+* intenta detectar `CUCE` desde el nombre y desde el contenido para dejar trazabilidad de coincidencia en el manifest
+* muestra barra de progreso por archivo cuando se ejecuta en terminal interactiva
+
+Campos utiles del `extraction_manifest.csv`:
+
+* `archive_member`: nombre interno del archivo si vino desde un `rar`
+* `filename_cuce`: CUCE detectado en el nombre del archivo
+* `content_cuce`: CUCE detectado dentro del texto extraido
+* `cuce_match`: `match`, `mismatch`, `missing_content_cuce`, `missing_filename_cuce` o `not_checked`
+
+## Auditoria de descargas curadas
+
+Para cruzar el renombrado con la extraccion y detectar faltantes o posibles corrimientos, el repositorio incluye [scripts/audit_downloads.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/scripts/audit_downloads.py:1).
+
+Ejemplo:
+
+```bash
+python3 scripts/audit_downloads.py \
+  --rename-manifest data/external/curated_docs/rename_manifest.csv \
+  --extraction-manifest data/intermediate/curated_docs_text/extraction_manifest.csv \
+  --output-path outputs/audit/download_audit.csv
+```
+
+Estados principales del auditor:
+
+* `content_match`: el CUCE esperado aparece en el contenido extraido
+* `content_cuce_missing`: no se detecto CUCE en el contenido; frecuente en plantillas DBC
+* `content_mismatch`: el contenido expone un CUCE distinto al esperado
+* `missing_download`: hubo fila en el log sin archivo descargado
+* `missing_extraction`: el archivo no aparece en el manifest de extraccion
+* `warning_low_text`: el documento parece escaneado o requiere OCR
+
+El auditor también muestra barra de progreso por fila en terminal interactiva.
+
+## Notificaciones reutilizables
+
+El proyecto incluye una utilidad reusable en [src/notifications.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/src/notifications.py:1) para enviar mensajes a `ntfy` o `ntf.sh`.
+
+Variables de entorno:
+
+* `NTFY_ENABLED=true|false`
+* `NTFY_SERVER=https://ntf.sh`
+* `NTFY_TOPIC=mi-canal`
+* `NTFY_TOKEN=` opcional
+
+Uso mínimo:
+
+```python
+from src.notifications import send_ntfy_notification
+
+result = send_ntfy_notification(
+    "Extraccion completada.",
+    title="SICOES pipeline",
+    tags=["white_check_mark", "python"],
+    priority=3,
+)
+
+print(result.success, result.detail)
+```
+
+La función no levanta excepciones de red; devuelve un resultado estructurado para que el caller decida si registrar el error o ignorarlo.
+
+Adicionalmente, los scripts operativos guardan un resumen local por corrida en `outputs/run_summaries/`:
+
+* un JSON por ejecución con timestamp
+* un `history.jsonl` acumulado
+* un archivo `*_latest.json` por script
+
+Cada resumen incluye al menos:
+
+* `timestamp_utc`
+* `hostname`
+* `script`
+* `success`
+* `elapsed_seconds`
+* `summary`
+* `error`
+
+## Corpus enriquecido
+
+Con los textos ya extraídos, puedes construir un corpus RAG enriquecido con [scripts/build_enriched_corpus.py](/var/www/codigo/maestria_ia/umsa/diplomados_intermedios/dip_03/scripts/build_enriched_corpus.py:1).
+
+Ejemplo:
+
+```bash
+python3 scripts/build_enriched_corpus.py \
+  --texts-dir data/intermediate/curated_docs_text \
+  --output-path data/processed/curated/curated_corpus_enriched.parquet \
+  --csv-output-path data/processed/curated/curated_corpus_enriched.csv
+```
+
+El builder:
+
+* toma `data/rag/sicoes_convocatorias_rag.parquet` como base
+* detecta `CUCE` y tipo documental desde el nombre del archivo extraído
+* agrega columnas separadas como `dbc_text`, `convocatoria_text`, `ficha_text`
+* construye `texto_rag_base` y `texto_rag_enriched`
+* genera un reporte `*_unmatched.csv` para documentos que no pudo asociar al corpus base
 
 Nota de consistencia:
 

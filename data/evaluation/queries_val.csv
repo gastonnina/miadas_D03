@@ -1,0 +1,4 @@
+query_id,query_text,relevant_cuce,metadata_filters,notes,categoria
+val_001,amoxicilina de uso hospitalario para farmacia,26-1101-04-1669637-1-1,,Medicamento hospitalario especifico,medicamentos
+val_002,rescate en aeronaves e incendios estructurales la paz,26-0389-00-1669576-1-1,,Equipos especializados de rescate,bienes
+val_003,alcantarillado sanitario y pluvial con cemento en viacha,26-1206-00-1669479-1-1,,Mantenimiento sanitario con insumo principal,infraestructura

@@ -18,6 +18,7 @@ EVALUATION_DIR = DATA_DIR / "evaluation"
 OUTPUTS_DIR = ROOT_DIR / "outputs"
 FIGURES_DIR = OUTPUTS_DIR / "figures"
 TABLES_DIR = OUTPUTS_DIR / "tables"
+RUN_SUMMARIES_DIR = OUTPUTS_DIR / "run_summaries"
 
 RAW_JSONL_PATH = RAW_DIR / "sicoes_convocatorias_raw.jsonl"
 RAW_PARQUET_PATH = RAW_DIR / "sicoes_convocatorias_raw.parquet"
@@ -63,6 +64,15 @@ class Settings:
     retrieval_top_k: int = int(os.getenv("RETRIEVAL_TOP_K", "5"))
     default_retrieval_mode: str = os.getenv("DEFAULT_RETRIEVAL_MODE", "keyword")
     rag_max_context_chars: int = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "12000"))
+    ntfy_enabled: bool = os.getenv("NTFY_ENABLED", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    ntfy_server: str = os.getenv("NTFY_SERVER", "https://ntf.sh").rstrip("/")
+    ntfy_topic: str = os.getenv("NTFY_TOPIC", "").strip()
+    ntfy_token: str = os.getenv("NTFY_TOKEN", "").strip()
 
 
 settings = Settings()
