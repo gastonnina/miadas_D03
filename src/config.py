@@ -29,6 +29,11 @@ PROCESSED_CSV_EXPORT_PATH = PROCESSED_DIR / "sicoes_convocatorias_clean.csv"
 
 RAG_PARQUET_PATH = RAG_DIR / "sicoes_convocatorias_rag.parquet"
 RAG_CSV_EXPORT_PATH = RAG_DIR / "sicoes_convocatorias_rag.csv"
+CURATED_DIR = PROCESSED_DIR / "curated"
+CURATED_ENRICHED_PARQUET_PATH = CURATED_DIR / "curated_corpus_enriched.parquet"
+CURATED_ENRICHED_CSV_PATH = CURATED_DIR / "curated_corpus_enriched.csv"
+CURATED_FOCUSED_CHUNKED_PARQUET_PATH = CURATED_DIR / "curated_corpus_focused_chunked.parquet"
+CURATED_FOCUSED_CHUNKED_CSV_PATH = CURATED_DIR / "curated_corpus_focused_chunked.csv"
 
 EVALUATION_DEV_PATH = EVALUATION_DIR / "queries_dev.csv"
 EVALUATION_VAL_PATH = EVALUATION_DIR / "queries_val.csv"
@@ -39,6 +44,7 @@ PRIMARY_PROCESSED_PATH = PROCESSED_PARQUET_PATH
 PRIMARY_RAG_PATH = RAG_PARQUET_PATH
 
 RAG_TEXT_COLUMN = "texto_rag"
+RAG_ENRICHED_TEXT_COLUMN = "texto_rag_enriched"
 RAG_ID_COLUMN = "document_id"
 RAG_PRIMARY_KEY = "cuce"
 
@@ -49,7 +55,7 @@ class Settings:
 
     database_url: str = os.getenv(
         "DATABASE_URL",
-        "postgresql+psycopg://postgres:postgres@localhost:5432/sicoes_rag",
+        "postgresql+psycopg://postgres:postgres@localhost:5433/sicoes_rag",
     )
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "sentence_transformers")
     embedding_model: str = os.getenv(

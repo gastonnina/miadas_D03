@@ -76,6 +76,15 @@ SPANISH_STOPWORDS = {
 }
 
 
+def _candidate_limit_for_variant(k: int, metadata_filters: dict[str, Any] | None) -> int:
+    """Amplia el pool de candidatos cuando un corpus puede contener multiples chunks por CUCE."""
+    variant = ""
+    if metadata_filters:
+        variant = str(metadata_filters.get("corpus_variant", "")).strip().lower()
+    multiplier = 8 if variant == "focused_chunked" else 1
+    return max(k, k * multiplier)
+
+
 def _require_pgvector() -> None:
     """Valida que la dependencia de pgvector este disponible."""
     if Vector is None:
@@ -119,6 +128,7 @@ convocatorias_table = Table(
     Column("fecha_presentacion", Date, nullable=True),
     Column("archivos_disponibles", Text, nullable=True),
     Column("ficha_url", Text, nullable=True),
+    Column("corpus_variant", Text, nullable=False, server_default=text("'base'")),
     Column(RAG_TEXT_COLUMN, Text, nullable=False),
     Column("metadata_json", JSON, nullable=True),
     Column("embedding", Vector(EMBEDDING_DIMENSION) if Vector else Text, nullable=True),
@@ -129,6 +139,7 @@ convocatorias_table = Table(
     Index("ix_convocatorias_tipo_contratacion", "tipo_contratacion"),
     Index("ix_convocatorias_modalidad", "modalidad"),
     Index("ix_convocatorias_estado", "estado"),
+    Index("ix_convocatorias_corpus_variant", "corpus_variant"),
 )
 
 
@@ -192,12 +203,36 @@ def _build_search_payload(row: Any, score_field: str, score_value: float | None)
         ),
         "archivos_disponibles": row.archivos_disponibles,
         "ficha_url": row.ficha_url,
+        "corpus_variant": row.corpus_variant,
         RAG_TEXT_COLUMN: getattr(row, RAG_TEXT_COLUMN),
         "metadata_json": row.metadata_json,
     }
     if score_value is not None:
         payload[score_field] = float(score_value)
     return payload
+
+
+def _deduplicate_payloads_by_cuce(
+    payloads: list[dict[str, Any]],
+    *,
+    k: int,
+) -> list[dict[str, Any]]:
+    """Colapsa multiples chunks del mismo CUCE para evaluar y navegar por proceso, no por fragmento."""
+    deduplicated: list[dict[str, Any]] = []
+    seen_cuces: set[str] = set()
+
+    for payload in payloads:
+        cuce = str(payload.get("cuce", "")).strip()
+        if not cuce:
+            continue
+        if cuce in seen_cuces:
+            continue
+        deduplicated.append(payload)
+        seen_cuces.add(cuce)
+        if len(deduplicated) >= k:
+            break
+
+    return deduplicated
 
 
 def _tokenize_query(query: str) -> list[str]:
@@ -286,6 +321,8 @@ def prepare_convocatoria_record(
 
     inferred_metadata = metadata_json or {
         "source": "sicoes_rag_dataset",
+        "corpus_variant": row.get("corpus_variant", "base"),
+        "source_text_column": row.get("source_text_column", RAG_TEXT_COLUMN),
         "cuce": row.get(RAG_PRIMARY_KEY),
         "estado": row.get("estado"),
         "tipo_contratacion": row.get("tipo_contratacion"),
@@ -304,6 +341,7 @@ def prepare_convocatoria_record(
         "fecha_presentacion": _parse_iso_date(row.get("fecha_presentacion_iso")),
         "archivos_disponibles": _clean_optional_text(row.get("archivos_disponibles")),
         "ficha_url": _clean_optional_text(row.get("ficha_url")),
+        "corpus_variant": _clean_optional_text(row.get("corpus_variant")) or "base",
         RAG_TEXT_COLUMN: str(row[RAG_TEXT_COLUMN]).strip(),
         "metadata_json": inferred_metadata,
         "embedding": embedding,
@@ -366,6 +404,7 @@ def insert_convocatorias(
                 "fecha_presentacion": statement.excluded.fecha_presentacion,
                 "archivos_disponibles": statement.excluded.archivos_disponibles,
                 "ficha_url": statement.excluded.ficha_url,
+                "corpus_variant": statement.excluded.corpus_variant,
                 RAG_TEXT_COLUMN: statement.excluded.texto_rag,
                 "metadata_json": statement.excluded.metadata_json,
                 "embedding": statement.excluded.embedding,
@@ -396,6 +435,7 @@ def semantic_search(
     """Ejecuta busqueda semantica usando distancia coseno de pgvector."""
     _require_pgvector()
     top_k = k or settings.retrieval_top_k
+    candidate_limit = _candidate_limit_for_variant(top_k, metadata_filters)
     query_embedding = generate_embeddings([query])[0]
     distance = convocatorias_table.c.embedding.cosine_distance(query_embedding)
 
@@ -403,7 +443,7 @@ def semantic_search(
         select(convocatorias_table, distance.label("distance"))
         .where(convocatorias_table.c.embedding.is_not(None))
         .order_by(distance.asc())
-        .limit(top_k)
+        .limit(candidate_limit)
     )
     statement = _apply_common_filters(statement, metadata_filters)
 
@@ -411,7 +451,8 @@ def semantic_search(
     with engine.begin() as connection:
         rows = connection.execute(statement).all()
 
-    return [_build_search_payload(row, "distance", row.distance) for row in rows]
+    payloads = [_build_search_payload(row, "distance", row.distance) for row in rows]
+    return _deduplicate_payloads_by_cuce(payloads, k=top_k)
 
 
 def keyword_search(
@@ -421,6 +462,7 @@ def keyword_search(
 ) -> list[dict[str, Any]]:
     """Ejecuta busqueda keyword con tokenizacion y score por coincidencia."""
     top_k = k or settings.retrieval_top_k
+    candidate_limit = _candidate_limit_for_variant(top_k, metadata_filters)
     keyword_components = _build_keyword_score_and_clause(query)
     if keyword_components is None:
         return []
@@ -431,13 +473,14 @@ def keyword_search(
     statement = statement.order_by(
         score_expression.desc(),
         convocatorias_table.c.fecha_publicacion.desc().nullslast(),
-    ).limit(top_k)
+    ).limit(candidate_limit)
 
     engine = connect_db()
     with engine.begin() as connection:
         rows = connection.execute(statement).all()
 
-    return [_build_search_payload(row, "score", row.score) for row in rows]
+    payloads = [_build_search_payload(row, "score", row.score) for row in rows]
+    return _deduplicate_payloads_by_cuce(payloads, k=top_k)
 
 
 def hybrid_search(
@@ -450,7 +493,13 @@ def hybrid_search(
     """Recupera candidatos keyword y los reranquea semanticamente."""
     _require_pgvector()
     top_k = k or settings.retrieval_top_k
-    keyword_candidates = keyword_search(query, k=candidate_pool_size, metadata_filters=metadata_filters)
+    candidate_limit = _candidate_limit_for_variant(top_k, metadata_filters)
+    expanded_candidate_pool = max(candidate_pool_size, candidate_limit * 4)
+    keyword_candidates = keyword_search(
+        query,
+        k=expanded_candidate_pool,
+        metadata_filters=metadata_filters,
+    )
     candidate_cuces = [item["cuce"] for item in keyword_candidates if item.get("cuce")]
     if not candidate_cuces:
         return semantic_search(query, k=top_k, metadata_filters=metadata_filters)
@@ -462,7 +511,7 @@ def hybrid_search(
         .where(convocatorias_table.c.embedding.is_not(None))
         .where(convocatorias_table.c.cuce.in_(candidate_cuces))
         .order_by(distance.asc())
-        .limit(top_k)
+        .limit(candidate_limit)
     )
     statement = _apply_common_filters(statement, metadata_filters)
 
@@ -470,4 +519,5 @@ def hybrid_search(
     with engine.begin() as connection:
         rows = connection.execute(statement).all()
 
-    return [_build_search_payload(row, "distance", row.distance) for row in rows]
+    payloads = [_build_search_payload(row, "distance", row.distance) for row in rows]
+    return _deduplicate_payloads_by_cuce(payloads, k=top_k)

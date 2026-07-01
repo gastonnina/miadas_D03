@@ -152,8 +152,11 @@ La configuracion base es:
 * base de datos: `sicoes_rag`
 * usuario: `postgres`
 * password: `postgres`
-* puerto: `5432`
+* puerto en contenedor: `5432`
+* puerto en host por defecto: `5433`
 * embedding por defecto: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+
+Si tu equipo ya usa `5432`, este proyecto expone PostgreSQL en `5433` por defecto. Si quieres cambiarlo otra vez, ajusta `POSTGRES_HOST_PORT` en `.env` y mantén `DATABASE_URL` sincronizada.
 
 Nota para PostgreSQL 18+:
 

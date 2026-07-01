@@ -222,18 +222,26 @@ def evaluate_search_method(
     method: str,
     split: str = "dev",
     k: int = 5,
+    metadata_filters_extra: dict[str, Any] | None = None,
+    query_ids: set[str] | None = None,
 ) -> list[EvaluationResult]:
     """Ejecuta una evaluacion completa sobre un split de consultas."""
     if k <= 0:
         raise ValueError("k debe ser mayor que cero.")
 
     queries = load_evaluation_queries(split)
+    if query_ids is not None:
+        queries = queries[queries["query_id"].astype(str).isin(query_ids)].copy()
     results: list[EvaluationResult] = []
     for row in queries.to_dict(orient="records"):
         query_text = str(row["query_text"]).strip()
         query_id = str(row["query_id"]).strip()
         relevant_cuces = _normalize_cuce_list(row.get("relevant_cuce"))
-        metadata_filters = _normalize_metadata_filters(row.get("metadata_filters"))
+        metadata_filters = _normalize_metadata_filters(row.get("metadata_filters")) or {}
+        if metadata_filters_extra:
+            metadata_filters.update(metadata_filters_extra)
+        if not metadata_filters:
+            metadata_filters = None
         search_results = search_fn(query_text, k, metadata_filters)
         results.append(
             evaluate_single_query(
@@ -248,16 +256,58 @@ def evaluate_search_method(
     return results
 
 
-def evaluate_keyword_search(split: str = "dev", k: int = 5) -> list[EvaluationResult]:
+def evaluate_keyword_search(
+    split: str = "dev",
+    k: int = 5,
+    *,
+    metadata_filters_extra: dict[str, Any] | None = None,
+    method_label: str = "keyword",
+    query_ids: set[str] | None = None,
+) -> list[EvaluationResult]:
     """Evalua la linea base keyword con SQL e ILIKE."""
-    return evaluate_search_method(keyword_search, method="keyword", split=split, k=k)
+    return evaluate_search_method(
+        keyword_search,
+        method=method_label,
+        split=split,
+        k=k,
+        metadata_filters_extra=metadata_filters_extra,
+        query_ids=query_ids,
+    )
 
 
-def evaluate_semantic_search(split: str = "dev", k: int = 5) -> list[EvaluationResult]:
+def evaluate_semantic_search(
+    split: str = "dev",
+    k: int = 5,
+    *,
+    metadata_filters_extra: dict[str, Any] | None = None,
+    method_label: str = "semantic",
+    query_ids: set[str] | None = None,
+) -> list[EvaluationResult]:
     """Evalua la busqueda semantica sobre pgvector."""
-    return evaluate_search_method(semantic_search, method="semantic", split=split, k=k)
+    return evaluate_search_method(
+        semantic_search,
+        method=method_label,
+        split=split,
+        k=k,
+        metadata_filters_extra=metadata_filters_extra,
+        query_ids=query_ids,
+    )
 
 
-def evaluate_hybrid_search(split: str = "dev", k: int = 5) -> list[EvaluationResult]:
+def evaluate_hybrid_search(
+    split: str = "dev",
+    k: int = 5,
+    *,
+    metadata_filters_extra: dict[str, Any] | None = None,
+    method_label: str = "hybrid",
+    query_ids: set[str] | None = None,
+) -> list[EvaluationResult]:
     """Evalua la busqueda hibrida keyword + reranking semantico."""
-    return evaluate_search_method(hybrid_search, method="hybrid", split=split, k=k)
+    return evaluate_search_method(
+        hybrid_search,
+        method=method_label,
+        split=split,
+        k=k,
+        metadata_filters_extra=metadata_filters_extra,
+        query_ids=query_ids,
+    )
