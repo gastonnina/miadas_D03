@@ -7,24 +7,182 @@
 \end{center}
 
 \newpage
-\chapter{Marco Teórico}
+\chapter{MARCO TEÓRICO}
 
-\section{Procesamiento de Lenguaje Natural}
+\section{Recuperación de información y procesamiento del lenguaje natural}
 
-El procesamiento de lenguaje natural proporciona técnicas para representar, limpiar e interpretar texto no estructurado. En este proyecto, estas técnicas se aplican para transformar la información de las convocatorias públicas en una forma adecuada para búsqueda semántica.
+\subsection{Procesamiento del lenguaje natural}
 
-\section{Embeddings}
+El procesamiento del lenguaje natural (PLN) comprende el conjunto de métodos orientados a representar, analizar e interpretar lenguaje humano en forma computacional. En aplicaciones documentales, su función principal consiste en transformar texto no estructurado en representaciones utilizables para tareas de búsqueda, clasificación, agrupamiento y generación de respuestas \parencite{jurafsky2025, manning2008ir}. En el contexto de esta monografía, el PLN resulta pertinente porque las convocatorias del SICOES contienen descripciones administrativas, objetos de contratación y documentos anexos que deben convertirse en una forma procesable antes de aplicar mecanismos de recuperación semántica.
 
-Los embeddings son representaciones vectoriales densas que codifican relaciones semánticas entre fragmentos de texto. Su utilidad radica en permitir que consultas formuladas con términos distintos recuperen documentos conceptualmente cercanos.
+\subsection{Recuperación léxica de información}
 
-\section{Bases vectoriales}
+La recuperación de información tradicional se basa en la coincidencia entre los términos de la consulta y los términos presentes en los documentos. Este enfoque ha sido ampliamente estudiado dentro del campo de \textit{Information Retrieval}, donde medidas como TF-IDF y BM25 siguen siendo referencias fuertes para ranking documental \parencite{manning2008ir, robertson2009bm25}. Su principal ventaja radica en la transparencia y en su buen desempeño cuando el dominio depende de vocabulario específico, códigos, nombres exactos o formulaciones recurrentes, situación frecuente en portales institucionales como el SICOES.
 
-PostgreSQL con la extensión pgvector permite almacenar embeddings y realizar búsquedas por similitud dentro del mismo sistema de base de datos. Esta elección favorece una arquitectura mantenible, integrando información estructurada, filtros SQL y recuperación semántica en una sola plataforma.
+\subsection{Recuperación semántica de información}
+
+La recuperación semántica busca superar la dependencia de coincidencias exactas al representar consultas y documentos mediante vectores densos que aproximan su significado. Bajo este paradigma, una consulta puede recuperar documentos relevantes aun cuando no compartan exactamente las mismas palabras, siempre que exista cercanía conceptual en el espacio vectorial \parencite{reimers2019sentencebert, karpukhin2020dpr}. Este tipo de recuperación es especialmente atractivo cuando los usuarios formulan necesidades en lenguaje natural y cuando los documentos contienen variantes terminológicas o redacciones heterogéneas.
+
+\section{Representación vectorial y bases vectoriales}
+
+\subsection{Embeddings de texto}
+
+Los \textit{embeddings} son representaciones numéricas densas que codifican relaciones semánticas entre palabras, frases o documentos. En los sistemas modernos de búsqueda semántica, estas representaciones permiten comparar textos por cercanía vectorial en lugar de depender únicamente de superposición léxica \parencite{reimers2019sentencebert}. Para esta investigación, los embeddings constituyen la base del índice semántico, ya que permiten posicionar consultas y convocatorias dentro de un mismo espacio de similitud.
+
+\subsection{Dense retrieval y similitud vectorial}
+
+El \textit{dense retrieval} utiliza vectores para recuperar documentos relevantes a partir de funciones de distancia o similitud, tales como distancia euclidiana, producto interno o similitud coseno. Trabajos como \textit{Dense Passage Retrieval} mostraron que los recuperadores densos pueden superar a líneas base léxicas en varios escenarios de pregunta-respuesta abierta, siempre que el corpus, el modelo y el esquema de entrenamiento estén bien alineados con la tarea \parencite{karpukhin2020dpr}. Sin embargo, su desempeño práctico depende de la calidad del corpus, del tamaño de los fragmentos indexados y de la pertinencia del modelo de embeddings seleccionado.
+
+\subsection{Bases vectoriales y pgvector}
+
+Una base vectorial permite almacenar embeddings y ejecutar consultas de vecinos más cercanos sobre ellos. En esta monografía se adopta PostgreSQL con la extensión \texttt{pgvector}, debido a que permite integrar datos estructurados y recuperación vectorial dentro de una misma plataforma. Según la documentación oficial del proyecto, \texttt{pgvector} soporta búsqueda exacta y aproximada, además de varias funciones de distancia, incluyendo L2, producto interno y distancia coseno \parencite{pgvector2025}. Esta elección favorece una arquitectura mantenible y reproducible para un entorno aplicado como el analizado.
 
 \section{Retrieval-Augmented Generation}
 
-El enfoque Retrieval-Augmented Generation combina recuperación de contexto relevante con un modelo de lenguaje que utiliza ese contexto para formular respuestas más precisas y fundamentadas.
+\subsection{Concepto de Retrieval-Augmented Generation}
 
-\section{LangChain como capa de orquestación}
+Retrieval-Augmented Generation (RAG) es un enfoque que combina un modelo generativo con un mecanismo previo de recuperación de contexto externo. Su formulación moderna fue sistematizada por Lewis et al., quienes plantean una arquitectura en la que un modelo generativo consulta memoria no paramétrica mediante recuperación antes de producir la respuesta \parencite{lewis2020rag}. Conceptualmente, RAG separa dos funciones: primero identificar evidencia relevante y luego generar una salida apoyada en dicha evidencia.
 
-LangChain se utilizará como capa de integración para desacoplar la selección del modelo de lenguaje, la construcción del contexto y la lógica de recuperación, facilitando cambios de proveedor sin reestructurar completamente la aplicación.
+La Figura \ref{fig:rag_pipeline} resume este flujo conceptual, en el que una colección documental se indexa, una consulta activa el proceso de recuperación, los contextos más relevantes se incorporan al \textit{prompt} y el modelo genera una respuesta fundamentada en la evidencia recuperada.
+
+\begin{figure}[H]
+\centering
+\begingroup
+\shorthandoff{<>}
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw, rounded corners=4pt, align=center, minimum height=1.05cm},
+  docs/.style={box, fill=gray!15, text width=2.7cm},
+  stage/.style={box, fill=cyan!18, text width=2.9cm},
+  retr/.style={box, fill=green!18, text width=3.1cm},
+  llm/.style={box, fill=blue!15, text width=2.5cm},
+  resultbox/.style={box, fill=yellow!25, text width=2.7cm}
+]
+  \node[docs] (docs) at (0, 0) {\textbf{Colecci\'on documental}\\Documentos y fuentes externas};
+  \node[stage] (index) at (3.6, 0) {\textbf{Indexaci\'on}\\Fragmentaci\'on y embeddings};
+  \node[retr] (store) at (7.5, 0) {\textbf{Recuperaci\'on}\\\'Indice o base vectorial};
+  \node[stage] (query) at (7.5, 2.2) {\textbf{Consulta del usuario}};
+  \node[retr] (context) at (11.5, 0) {\textbf{Contextos relevantes}\\Top-$k$ fragmentos recuperados};
+  \node[llm] (llm) at (15.2, 0) {\textbf{LLM}\\Prompt aumentado};
+  \node[resultbox] (answer) at (18.5, 0) {\textbf{Respuesta}\\Salida fundamentada};
+
+  \draw[->, thick] (docs) -- (index);
+  \draw[->, thick] (index) -- (store);
+  \draw[->, thick] (query) -- (store);
+  \draw[->, thick] (store) -- (context);
+  \draw[->, thick] (context) -- (llm);
+  \draw[->, thick] (llm) -- (answer);
+\end{tikzpicture}
+\endgroup
+\caption{Esquema conceptual del flujo de \textit{Retrieval-Augmented Generation}.}
+\label{fig:rag_pipeline}
+\end{figure}
+
+\subsection{Ventajas del enfoque RAG}
+
+Entre las principales ventajas de RAG se encuentran la posibilidad de incorporar conocimiento externo sin reentrenar completamente el modelo, la capacidad de fundamentar respuestas en documentos recuperados y la flexibilidad para trabajar con colecciones actualizables \parencite{lewis2020rag}. En aplicaciones institucionales y documentales, esto resulta útil porque permite complementar el conocimiento paramétrico del modelo con información específica del dominio, como convocatorias, requisitos técnicos o plazos administrativos.
+
+\subsection{Limitaciones y dependencia del corpus}
+
+La utilidad de RAG no depende únicamente del modelo generativo, sino de la calidad del retrieval previo y del corpus disponible. Si la recuperación inicial introduce ruido, desalineación documental o cobertura insuficiente, la generación posterior tiende a reproducir esas limitaciones. Por ello, en sistemas RAG el componente de recuperación no debe considerarse accesorio, sino estructural para la calidad final de la respuesta \parencite{lewis2020rag, karpukhin2020dpr}. Esta observación es especialmente relevante para el dominio SICOES, donde la consistencia entre metadatos y DBC no siempre es homogénea.
+
+\section{Orquestación y evaluación del sistema}
+
+\subsection{LangChain como capa de integración}
+
+LangChain es un marco de desarrollo orientado a integrar modelos de lenguaje con componentes externos, tales como \textit{retrievers}, fuentes documentales, cadenas de prompts y herramientas auxiliares. Su valor práctico radica en desacoplar la lógica de recuperación, construcción de contexto y generación de respuestas, facilitando cambios de proveedor o de arquitectura sin rediseñar toda la aplicación \parencite{langchain2025}. En este proyecto, dicha capa resulta adecuada para prototipar y evaluar flujos RAG con recuperación configurable.
+
+\subsection{Métricas de evaluación en retrieval}
+
+La evaluación de sistemas de recuperación de información suele considerar no solo si existe un resultado relevante, sino también en qué posición aparece y cuántos documentos útiles son recuperados dentro de un umbral dado. En este marco, métricas como \textit{Precision@k}, \textit{Recall@k}, \textit{Mean Reciprocal Rank} (MRR) y \textit{Hit@k} son apropiadas para valorar calidad de ranking y utilidad temprana del sistema \parencite{manning2008ir}. Estas métricas son coherentes con el problema abordado en esta monografía, donde el interés principal no es clasificar documentos en abstracto, sino recuperar candidatos útiles dentro de los primeros resultados.
+
+\subsection{Relación entre corpus, retrieval y respuesta generada}
+
+En una arquitectura de búsqueda aumentada, la calidad de la respuesta final depende de una cadena de condiciones: disponibilidad documental, consistencia del corpus, efectividad del retrieval y capacidad del modelo para sintetizar la evidencia recuperada. Por ello, la evaluación teórica del sistema no puede reducirse al comportamiento del LLM aislado, sino que debe considerar la interacción entre la fuente documental, el mecanismo de búsqueda y la etapa de generación \parencite{lewis2020rag, langchain2025}. Esta relación conceptual orienta la interpretación de resultados en los capítulos posteriores.
+
+\section{\textit{CRISP-DM}: Proceso Estándar de Minería de Datos}
+
+\textit{CRISP-DM} (\textit{Cross Industry Standard Process for Data Mining}) es un modelo metodológico desarrollado a fines de los años 90 con el objetivo de estandarizar el proceso de minería de datos en distintos dominios. Fue propuesto por un consorcio europeo liderado por Daimler-Benz, SPSS y NCR, y está compuesto por seis fases principales: comprensión del negocio, comprensión de los datos, preparación de los datos, modelado, evaluación y despliegue \parencite{chapman2000crisp,wirth2000crisp}.
+
+Este enfoque permite organizar y estructurar proyectos de análisis de datos de manera flexible e iterativa, adaptándose a los cambios y necesidades que puedan surgir durante el desarrollo. Su amplia adopción tanto en entornos industriales como académicos se debe a su claridad, modularidad y enfoque práctico. A diferencia de otros métodos más rígidos, \textit{CRISP-DM} promueve un flujo de trabajo no lineal, donde es común regresar a fases anteriores para ajustar decisiones, reentrenar modelos o incorporar nuevas fuentes de datos.
+
+Además, el modelo es independiente de herramientas y técnicas específicas, lo que lo hace aplicable a una variedad de contextos tecnológicos y disciplinas, incluyendo proyectos de clasificación supervisada, análisis de texto y ciencia de datos aplicada.
+
+\subsection{Fases del proceso \textit{CRISP-DM}}
+
+Las seis fases que componen el modelo se describen a continuación:
+
+\begin{enumerate}
+	\item \textbf{Comprensión del negocio:} En esta fase se define claramente el problema desde una perspectiva no técnica, alineando los objetivos del proyecto con las necesidades estratégicas de la organización. Esto incluye la formulación de preguntas clave, restricciones y criterios de éxito del modelo.
+	\item \textbf{Comprensión de los datos:} Implica la recolección inicial de datos, su descripción mediante estadísticas básicas y la detección de problemas como valores atípicos, inconsistencias o ausencia de registros. Es un paso crucial para conocer el potencial informativo del conjunto de datos disponible.
+	\item \textbf{Preparación de los datos:} Consiste en seleccionar atributos relevantes, limpiar registros ruidosos, transformar formatos y generar nuevas variables si es necesario. Esta etapa puede involucrar la vectorización de texto, el escalado de variables o la codificación de categorías, especialmente en tareas como el procesamiento de lenguaje natural.
+	\item \textbf{Modelado:} Aquí se seleccionan y aplican los algoritmos de aprendizaje automático apropiados para el problema. En este paso también se realiza la validación cruzada, ajuste de hiperparámetros y experimentación con distintas configuraciones del modelo para maximizar su desempeño.
+	\item \textbf{Evaluación:} Los modelos construidos se evalúan en función de métricas objetivas como precisión, recall, F1-score o AUC. Además, se examina si los resultados cumplen con los objetivos definidos en la primera fase, considerando también interpretabilidad y robustez.
+	\item \textbf{Despliegue:} Finalmente, los conocimientos obtenidos se integran en sistemas de toma de decisiones, visualizaciones interactivas, aplicaciones o reportes. Esta fase puede incluir el monitoreo del modelo en producción y planes de mantenimiento o reentrenamiento periódico.
+\end{enumerate}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{02_crispdm_etapas.png}
+	\caption{Diagrama del proceso \textit{CRISP-DM}.}
+	\label{fig:crispdm}
+\end{figure}
+
+El carácter iterativo de \textit{CRISP-DM} permite realizar ajustes continuos en las decisiones tomadas durante el ciclo de vida del proyecto. Por ejemplo, si en la fase de evaluación se identifican problemas de rendimiento, es posible volver a las etapas de preparación de datos o modelado para realizar mejoras. Esta retroalimentación constante convierte a \textit{CRISP-DM} en una metodología altamente adaptable a proyectos con incertidumbre, cambios en los requerimientos o descubrimientos emergentes durante el análisis \parencite{wirth2000crisp}.
+
+\subsubsection*{División del conjunto de datos}
+
+En estudios experimentales, la división del conjunto de datos permite separar con claridad las etapas de construcción, ajuste y evaluación del sistema, reduciendo el riesgo de obtener conclusiones sesgadas por sobreajuste o por reutilización de los mismos ejemplos en todo el proceso. Aunque esta práctica es más visible en aprendizaje supervisado, también resulta pertinente en sistemas de recuperación de información cuando se requiere comparar configuraciones, revisar relevancia y medir desempeño sobre consultas controladas.
+
+En sistemas de recuperación de información, la partición no se limita necesariamente a la separación clásica entre entrenamiento y prueba. Dependiendo del problema, puede aplicarse al corpus documental, al conjunto de consultas o a los juicios de relevancia, con el fin de diferenciar los casos utilizados para exploración y ajuste de aquellos reservados para evaluación final.
+
+Esta distinción es importante porque la recuperación léxica, la recuperación semántica y los enfoques híbridos pueden variar su desempeño según el tipo de consulta, la calidad de los juicios de relevancia y la consistencia del corpus. Por ello, una separación entre conjuntos de desarrollo y de prueba favorece una evaluación más confiable de métricas como \textit{Precision@k}, \textit{Recall@k}, \textit{MRR} y \textit{Hit@k}, evitando que las decisiones de configuración se valoren sobre los mismos casos utilizados para definirlas.
+
+La Figura \ref{fig:split_retrieval} resume esta lógica de manera conceptual para sistemas de recuperación documental, distinguiendo la colección disponible, los conjuntos de desarrollo y prueba, y la evaluación apoyada en juicios de relevancia.
+
+\begin{figure}[H]
+\centering
+\begingroup
+\shorthandoff{<>}
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw, rounded corners=4pt, align=center, minimum height=1.05cm, text width=4.6cm},
+  main/.style={box, fill=cyan!20},
+  dev/.style={box, fill=green!20},
+  test/.style={box, fill=red!20},
+  eval/.style={box, fill=yellow!25, text width=7.8cm}
+]
+  \node[main] (available) at (0, 4.3) {\textbf{Conjunto de datos disponible}\\Colecci\'on documental, consultas y juicios de relevancia};
+  \node[main] (organization) at (0, 2.1) {\textbf{Organizaci\'on de la evaluaci\'on}\\Separaci\'on entre desarrollo y prueba};
+
+  \node[dev] (devset) at (-3.1, -0.1) {\textbf{Conjunto de desarrollo}\\Exploraci\'on y ajuste de configuraciones};
+  \node[test] (testset) at (3.1, -0.1) {\textbf{Conjunto de prueba}\\Valoraci\'on final sobre casos reservados};
+
+  \node[eval] (metrics) at (0, -2.2) {\textbf{Evaluaci\'on con juicios de relevancia}\\Precision@k, Recall@k, MRR y Hit@k};
+
+  \draw[->, thick] (available) -- (organization);
+  \draw[->, thick] (organization) -- (devset);
+  \draw[->, thick] (organization) -- (testset);
+  \draw[->, thick] (devset) -- (metrics);
+  \draw[->, thick] (testset) -- (metrics);
+\end{tikzpicture}
+\endgroup
+\caption{Esquema conceptual de partición y evaluación en un sistema de recuperación documental.}
+\label{fig:split_retrieval}
+\end{figure}
+
+Desde la lógica de \textit{CRISP-DM}, esta partición se relaciona principalmente con las fases de preparación de los datos y evaluación, ya que permite estructurar de manera ordenada la comparación entre métodos de recuperación y la valoración de sus resultados. En consecuencia, la división del conjunto de datos no solo cumple una función técnica, sino también metodológica, al fortalecer la trazabilidad y la validez de los resultados reportados.
+
+\section{Estudios relacionados}
+
+\subsection{Recuperación semántica en colecciones documentales}
+
+La literatura reciente sobre recuperación semántica muestra que las representaciones densas permiten mejorar la recuperación en escenarios donde existe variación terminológica, ambigüedad léxica o consultas expresadas en lenguaje natural \parencite{reimers2019sentencebert, karpukhin2020dpr}. Estos avances han motivado su aplicación en colecciones documentales extensas, donde la similitud conceptual puede complementar a los métodos clásicos de coincidencia textual. No obstante, también se reconoce que el beneficio de estos enfoques depende de la calidad del corpus, del esquema de fragmentación y de la alineación entre consulta, documentos y modelo de embeddings.
+
+\subsection{Retrieval-Augmented Generation en sistemas de consulta documental}
+
+Los trabajos sobre RAG han mostrado que la generación aumentada por recuperación es especialmente útil cuando el sistema debe responder utilizando evidencia externa y actualizable, en lugar de depender únicamente del conocimiento paramétrico del modelo \parencite{lewis2020rag}. En contextos documentales, esta arquitectura permite combinar un paso inicial de selección de evidencia con una segunda etapa de síntesis o explicación. A nivel aplicado, el interés por RAG se ha concentrado en su capacidad para responder preguntas, resumir contenidos y justificar respuestas con apoyo en documentos recuperados, lo que lo hace relevante para dominios administrativos y técnicos.
+
+\subsection{Búsqueda documental en dominios institucionales}
+
+En dominios institucionales, como portales públicos, repositorios normativos o sistemas administrativos, la búsqueda documental presenta retos particulares: lenguaje formal, documentos heterogéneos, presencia de anexos y dependencia de códigos o descriptores específicos. En el caso del SICOES, estas características se reflejan en convocatorias con metadatos textuales, objetos de contratación y documentos asociados publicados dentro de un mismo proceso \parencite{sicoes}. Por ello, los estudios relacionados más cercanos al presente trabajo no son únicamente los de generación de texto, sino aquellos que analizan cómo integrar recuperación léxica, recuperación semántica y mecanismos de apoyo documental dentro de un entorno estructurado de consulta.

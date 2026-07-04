@@ -16,7 +16,9 @@
 \usepackage{booktabs}
 \usepackage{float}
 \usepackage{amsmath,amssymb}
+\usepackage{mathptmx}
 \usepackage{csquotes}
+\usepackage[style=apa, backend=biber, citestyle=apa, language=spanish, url=true, doi=true, eprint=false]{biblatex}
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage[most]{tcolorbox}
@@ -26,12 +28,15 @@
   citecolor=black,
   urlcolor=blue
 ]{hyperref}
+\addbibresource{references.bib}
 
 \renewcommand{\arraystretch}{1.3}
 \setlength{\parindent}{1.5em}
 \setlength{\parskip}{0.8em}
 \setlength{\headheight}{14pt}
 \onehalfspacing
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
 \graphicspath{{figures/}}
 
 \lstdefinestyle{pythonStyle}{
@@ -75,6 +80,12 @@
 \titleformat{\chapter}[block]
   {\normalfont\bfseries\Large}
   {CAPÍTULO \thechapter}{1em}{}
+\titleformat{\section}[block]
+  {\normalfont\bfseries\Large\raggedright}
+  {\thesection.}{1em}{}
+\titleformat{\subsection}[block]
+  {\normalfont\bfseries\large\raggedright}
+  {\thesubsection.}{1em}{}
 \titlespacing*{\chapter}{0pt}{-20pt}{24pt}
 
 \renewcommand{\cftchappresnum}{CAPÍTULO }
@@ -82,6 +93,7 @@
 \renewcommand{\cftchapnumwidth}{8em}
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{3}
+\sloppy
 
 \begin{document}
 
