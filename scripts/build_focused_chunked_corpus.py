@@ -47,42 +47,46 @@ STOPWORDS = {
 }
 
 SIGNAL_TERMS = {
-    "actividad",
     "adquisicion",
     "alcance",
-    "calidad",
+    "alcantarillado",
+    "anatomia",
+    "biomedico",
+    "cemento",
+    "clinica",
+    "clinico",
     "cantidad",
     "caracteristica",
     "condicion",
-    "consultoria",
-    "cronograma",
     "entrega",
     "equipo",
     "especificacion",
-    "experiencia",
-    "formacion",
-    "garantia",
+    "farmacia",
+    "funcional",
     "insumo",
     "item",
     "items",
+    "laboratorio",
     "material",
-    "metodologia",
-    "objetivo",
+    "medicamento",
+    "medicamentos",
     "obra",
-    "personal",
-    "plazo",
-    "precio",
+    "pluvial",
     "producto",
-    "propuesta",
     "provision",
     "reactivo",
+    "repuesto",
     "requerimiento",
-    "seguridad",
-    "servicio",
-    "sistema",
+    "software",
     "suministro",
     "tecnica",
     "tecnico",
+    "terminos",
+    "referencia",
+    "entregable",
+    "entregables",
+    "ubicacion",
+    "volumenes",
 }
 
 NEGATIVE_ADMIN_TERMS = {
@@ -98,14 +102,23 @@ NEGATIVE_ADMIN_TERMS = {
     "contenido",
     "criterios de subsanabilidad",
     "declaratoria desierta",
+    "expresiones de interes",
+    "expresiones de interés",
+    "firmas consultoras",
     "formulario",
     "garantia de seriedad",
     "garantía de seriedad",
+    "reunion de aclaracion",
+    "reunión de aclaración",
+    "licitacion publica internacional",
+    "licitación pública internacional",
     "normativa aplicable",
     "prestatario",
     "proponente",
     "propuesta economica",
     "propuesta económica",
+    "cronograma de plazos",
+    "solicitud de ofertas",
     "rechazo de la propuesta",
     "subsanacion",
     "tabla de contenido",
@@ -125,8 +138,14 @@ BOILERPLATE_PATTERNS = [
         r"actividades administrativas previas",
         r"condiciones generales del contrato",
         r"formulario [a-z0-9-]+",
+        r"firmas consultoras",
+        r"expresiones de inter[eé]s",
         r"anexo [0-9ivx]+",
         r"nb-sabs",
+        r"solicitud de ofertas",
+        r"licitaci[oó]n p[uú]blica internacional",
+        r"banco interamericano de desarrollo",
+        r"cliente:",
     ]
 ]
 
@@ -135,18 +154,17 @@ HEADING_HINTS = [
     "objeto de contratación",
     "objeto del servicio",
     "alcance",
+    "terminos de referencia",
+    "términos de referencia",
     "especificaciones tecnicas",
     "especificaciones técnicas",
     "condiciones tecnicas",
     "condiciones técnicas",
-    "plazo",
-    "forma de pago",
-    "personal clave",
-    "experiencia general",
-    "experiencia especifica",
-    "experiencia específica",
-    "metodologia",
-    "metodología",
+    "entregables",
+    "ubicacion de la obra",
+    "ubicación de la obra",
+    "tabla de volumenes de obra",
+    "tabla de volúmenes de obra",
 ]
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9ÁÉÍÓÚáéíóúÑñÜü]+")
@@ -210,6 +228,16 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=4200,
         help="Maximo de caracteres DBC seleccionados por CUCE antes de chunking.",
+    )
+    parser.add_argument(
+        "--allowed-dbc-statuses",
+        default="accept,review",
+        help="Estados de calidad DBC permitidos para generar chunks.",
+    )
+    parser.add_argument(
+        "--allowed-dbc-review-reasons",
+        default="partial_object_alignment",
+        help="Razones de review permitidas para generar chunks.",
     )
     return parser.parse_args()
 
@@ -356,9 +384,21 @@ def score_segment(
 
     if lowered.startswith("contenido") or "alcance de la licitación" in lowered or "alcance de la licitacion" in lowered:
         score -= 10.0
+    if "expresiones de interes" in lowered or "expresiones de interés" in lowered:
+        score -= 10.0
+    if "firmas consultoras" in lowered or "consultor individual" in lowered:
+        score -= 8.0
+    if "solicitud de ofertas" in lowered and overlap < 2:
+        score -= 6.0
+    if "licitación pública internacional" in lowered or "licitacion publica internacional" in lowered:
+        score -= 6.0
+    if "banco interamericano de desarrollo" in lowered:
+        score -= 6.0
 
     if len(segment) < 120:
         score -= 1.0
+    if len(segment) < 95 and heading_hits == 0:
+        score -= 3.0
     if len(segment) > 1800:
         score -= 8.0
     if position_index <= max(2, math.floor(total_segments * 0.08)):
@@ -425,11 +465,14 @@ def select_segments(
         has_negative = any(term in lowered for term in NEGATIVE_ADMIN_TERMS)
         starts_with_index = lowered.startswith("contenido") or lowered.startswith("indice")
         table_like = segment.text.count("|") >= 8 or "+---" in segment.text
+        heading_only = len(segment.text) < 110 and "\n" not in segment.text
         if starts_with_index or table_like:
+            continue
+        if heading_only and overlap < 2:
             continue
         if overlap == 0 and not has_heading:
             continue
-        if has_negative and overlap < 2 and not has_heading:
+        if has_negative and overlap < 3:
             continue
         if not has_heading and not has_signal and overlap < 3:
             continue
@@ -518,6 +561,23 @@ def build_chunk_text(row: pd.Series, chunk_text: str, chunk_index: int, chunk_co
     return "\n".join(parts).strip() + "\n"
 
 
+def should_include_row(
+    row: pd.Series,
+    *,
+    allowed_statuses: set[str],
+    allowed_review_reasons: set[str],
+) -> bool:
+    if not bool(row.get("has_dbc", False)):
+        return False
+    status = str(row.get("dbc_quality_status", "") or "").strip().lower()
+    reason = str(row.get("dbc_quality_reason", "") or "").strip().lower()
+    if status not in allowed_statuses:
+        return False
+    if status == "review" and reason not in allowed_review_reasons:
+        return False
+    return True
+
+
 def main() -> dict[str, object]:
     args = parse_args()
     input_path = args.input_path.resolve()
@@ -528,10 +588,27 @@ def main() -> dict[str, object]:
         if args.selection_report_path
         else output_path.with_name(output_path.stem + "_selection_report.csv")
     )
+    allowed_statuses = {
+        part.strip().lower()
+        for part in str(args.allowed_dbc_statuses).split(",")
+        if part.strip()
+    }
+    allowed_review_reasons = {
+        part.strip().lower()
+        for part in str(args.allowed_dbc_review_reasons).split(",")
+        if part.strip()
+    }
 
     source_df = pd.read_parquet(input_path)
     source_df["has_dbc"] = source_df["has_dbc"].fillna(False).astype(bool)
-    focused_df = source_df[source_df["has_dbc"]].copy()
+    focused_df = source_df[
+        source_df.apply(
+            should_include_row,
+            axis=1,
+            allowed_statuses=allowed_statuses,
+            allowed_review_reasons=allowed_review_reasons,
+        )
+    ].copy()
 
     records: list[dict[str, object]] = []
     selection_rows: list[dict[str, object]] = []
@@ -624,6 +701,8 @@ def main() -> dict[str, object]:
         "output_path": str(output_path),
         "csv_output_path": str(csv_output_path) if csv_output_path else "",
         "selection_report_path": str(selection_report_path),
+        "allowed_dbc_statuses": sorted(allowed_statuses),
+        "allowed_dbc_review_reasons": sorted(allowed_review_reasons),
     }
 
 

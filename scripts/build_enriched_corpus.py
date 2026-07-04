@@ -41,6 +41,12 @@ class DocumentText:
     text: str
 
 
+@dataclass(slots=True)
+class DocumentQuality:
+    status: str
+    reason: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -83,6 +89,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Incluye en el reporte interno documentos cuyo CUCE no exista en el corpus base.",
     )
+    parser.add_argument(
+        "--dbc-quality-report-path",
+        type=Path,
+        default=None,
+        help="CSV opcional con auditoria de calidad DBC para excluir reject.",
+    )
     return parser.parse_args()
 
 
@@ -109,6 +121,31 @@ def infer_document_type(stem_without_cuce: str) -> str:
         if any(token in normalized for token in candidates):
             return document_type
     return "otro"
+
+
+def load_dbc_quality_report(path: Path | None) -> dict[str, DocumentQuality]:
+    if path is None:
+        return {}
+    if not path.exists():
+        raise FileNotFoundError(f"No existe el reporte de calidad DBC: {path}")
+
+    frame = pd.read_csv(path)
+    required = {"cuce", "status", "reason"}
+    missing = required.difference(frame.columns)
+    if missing:
+        missing_text = ", ".join(sorted(missing))
+        raise ValueError(f"El reporte de calidad DBC no contiene columnas requeridas: {missing_text}")
+
+    quality_by_cuce: dict[str, DocumentQuality] = {}
+    for row in frame.to_dict(orient="records"):
+        cuce = str(row.get("cuce", "")).strip()
+        if not cuce:
+            continue
+        quality_by_cuce[cuce] = DocumentQuality(
+            status=str(row.get("status", "")).strip().lower() or "review",
+            reason=str(row.get("reason", "")).strip() or "missing_reason",
+        )
+    return quality_by_cuce
 
 
 def extract_cuce_and_suffix(value: str) -> tuple[str | None, str]:
@@ -260,11 +297,44 @@ def build_enriched_text(row: pd.Series) -> str:
     return "\n".join(sections).strip() + "\n"
 
 
+def should_keep_document(
+    document: DocumentText,
+    dbc_quality_by_cuce: dict[str, DocumentQuality],
+) -> tuple[bool, str]:
+    if document.document_type != "dbc":
+        return True, ""
+    quality = dbc_quality_by_cuce.get(document.cuce)
+    if quality is None:
+        return True, "missing_quality_report_row"
+    if quality.status == "reject":
+        return False, quality.reason
+    return True, quality.reason
+
+
 def main() -> dict[str, object]:
     args = parse_args()
 
     base_rag = load_base_rag(args.base_rag_path)
+    dbc_quality_by_cuce = load_dbc_quality_report(args.dbc_quality_report_path)
     documents, unmatched = iter_document_texts(args.texts_dir.resolve(), args.max_chars_per_doc)
+
+    filtered_documents: list[DocumentText] = []
+    rejected_dbc_count = 0
+    for document in documents:
+        keep, reason = should_keep_document(document, dbc_quality_by_cuce)
+        if keep:
+            filtered_documents.append(document)
+            continue
+        rejected_dbc_count += 1
+        unmatched.append(
+            {
+                "path": document.source_name,
+                "reason": f"dbc_rejected_by_quality_gate:{reason}",
+                "document_type": document.document_type,
+                "cuce": document.cuce,
+            }
+        )
+    documents = filtered_documents
 
     docs_by_cuce: dict[str, list[DocumentText]] = {}
     for document in documents:
@@ -278,6 +348,12 @@ def main() -> dict[str, object]:
     base_rag["especificaciones_text"] = ""
     base_rag["planos_text"] = ""
     base_rag["otros_anexos_text"] = ""
+    base_rag["dbc_quality_status"] = base_rag["cuce"].astype(str).map(
+        lambda cuce: dbc_quality_by_cuce.get(cuce, DocumentQuality("missing", "not_audited")).status
+    )
+    base_rag["dbc_quality_reason"] = base_rag["cuce"].astype(str).map(
+        lambda cuce: dbc_quality_by_cuce.get(cuce, DocumentQuality("missing", "not_audited")).reason
+    )
 
     known_cuces = set(base_rag["cuce"].astype(str))
 
@@ -341,6 +417,7 @@ def main() -> dict[str, object]:
     print("Filas base:", len(base_rag))
     print("Documentos extraidos reconocidos:", len(documents))
     print("CUECs con DBC:", int(base_rag["has_dbc"].sum()))
+    print("DBC rechazados por quality gate:", rejected_dbc_count)
 
     if unmatched and not args.include_unmatched:
         print("Advertencia: hay documentos no emparejados; revisa el reporte CSV.")
@@ -349,10 +426,14 @@ def main() -> dict[str, object]:
         "base_rows": len(base_rag),
         "documents_recognized": len(documents),
         "cuces_with_dbc": int(base_rag["has_dbc"].sum()),
+        "rejected_dbc_count": rejected_dbc_count,
         "unmatched_count": len(unmatched),
         "output_path": str(args.output_path),
         "csv_output_path": str(args.csv_output_path) if args.csv_output_path is not None else "",
         "unmatched_path": str(unmatched_path),
+        "dbc_quality_report_path": (
+            str(args.dbc_quality_report_path) if args.dbc_quality_report_path is not None else ""
+        ),
     }
 
 
@@ -376,6 +457,7 @@ if __name__ == "__main__":
                 f"Filas base: {summary['base_rows']}\n"
                 f"Documentos reconocidos: {summary['documents_recognized']}\n"
                 f"CUECs con DBC: {summary['cuces_with_dbc']}\n"
+                f"DBC rechazados: {summary['rejected_dbc_count']}\n"
                 f"No emparejados: {summary['unmatched_count']}\n"
                 f"Parquet: {summary['output_path']}\n"
                 f"CSV unmatched: {summary['unmatched_path']}\n"

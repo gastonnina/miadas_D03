@@ -32,8 +32,16 @@ RAG_CSV_EXPORT_PATH = RAG_DIR / "sicoes_convocatorias_rag.csv"
 CURATED_DIR = PROCESSED_DIR / "curated"
 CURATED_ENRICHED_PARQUET_PATH = CURATED_DIR / "curated_corpus_enriched.parquet"
 CURATED_ENRICHED_CSV_PATH = CURATED_DIR / "curated_corpus_enriched.csv"
+CURATED_ENRICHED_QC_FILTERED_PARQUET_PATH = CURATED_DIR / "curated_corpus_enriched_qc_filtered.parquet"
+CURATED_ENRICHED_QC_FILTERED_CSV_PATH = CURATED_DIR / "curated_corpus_enriched_qc_filtered.csv"
 CURATED_FOCUSED_CHUNKED_PARQUET_PATH = CURATED_DIR / "curated_corpus_focused_chunked.parquet"
 CURATED_FOCUSED_CHUNKED_CSV_PATH = CURATED_DIR / "curated_corpus_focused_chunked.csv"
+CURATED_FOCUSED_CHUNKED_QC_FILTERED_V2_PARQUET_PATH = (
+    CURATED_DIR / "curated_corpus_focused_chunked_qc_filtered_v2.parquet"
+)
+CURATED_FOCUSED_CHUNKED_QC_FILTERED_V2_CSV_PATH = (
+    CURATED_DIR / "curated_corpus_focused_chunked_qc_filtered_v2.csv"
+)
 
 EVALUATION_DEV_PATH = EVALUATION_DIR / "queries_dev.csv"
 EVALUATION_VAL_PATH = EVALUATION_DIR / "queries_val.csv"

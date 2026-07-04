@@ -33,6 +33,7 @@ from sqlalchemy import (
     case,
     create_engine,
     func,
+    literal_column,
     or_,
     select,
     text,
@@ -74,6 +75,56 @@ SPANISH_STOPWORDS = {
     "una",
     "y",
 }
+DOMAIN_QUERY_EXPANSIONS = {
+    "medicamento": ("medicamentos", "farmacia", "farmaceutico", "sus"),
+    "medicamentos": ("medicamento", "farmacia", "farmaceutico", "sus"),
+    "hospital": ("hospitalario", "salud", "clinico"),
+    "hospitalario": ("hospital", "salud", "clinico"),
+    "reactivo": ("reactivos", "laboratorio", "clinico"),
+    "reactivos": ("reactivo", "laboratorio", "clinico"),
+    "laboratorio": ("reactivos", "clinico", "quimico"),
+    "clinico": ("clinica", "hospital", "salud"),
+    "clinica": ("clinico", "salud", "hospital"),
+    "software": ("sistema", "informatico", "tecnologico"),
+    "sistema": ("software", "informatico", "integrado"),
+    "gestion": ("administracion", "integrado"),
+    "alcantarillado": ("pluvial", "sanitario", "drenaje"),
+    "pluvial": ("alcantarillado", "drenaje"),
+    "sanitario": ("alcantarillado", "pluvial"),
+    "vias": ("vial", "urbanas", "camino"),
+    "via": ("vial", "camino"),
+    "cemento": ("hormigon",),
+}
+KEYWORD_FIELD_DEFAULT_WEIGHTS = {
+    "cuce": 6.0,
+    "objeto_contratacion": 5.0,
+    "entidad": 2.5,
+    "tipo_contratacion": 1.5,
+    "modalidad": 1.0,
+    "texto_rag": 2.0,
+}
+KEYWORD_FIELD_WEIGHTS_BY_VARIANT = {
+    "base": {
+        **KEYWORD_FIELD_DEFAULT_WEIGHTS,
+        "texto_rag": 2.5,
+    },
+    "enriched": {
+        **KEYWORD_FIELD_DEFAULT_WEIGHTS,
+        "texto_rag": 0.75,
+    },
+    "enriched_qc_filtered": {
+        **KEYWORD_FIELD_DEFAULT_WEIGHTS,
+        "texto_rag": 1.0,
+    },
+    "focused_chunked": {
+        **KEYWORD_FIELD_DEFAULT_WEIGHTS,
+        "texto_rag": 1.5,
+    },
+    "focused_chunked_qc_filtered_v2": {
+        **KEYWORD_FIELD_DEFAULT_WEIGHTS,
+        "texto_rag": 1.75,
+    },
+}
 
 
 def _candidate_limit_for_variant(k: int, metadata_filters: dict[str, Any] | None) -> int:
@@ -82,6 +133,8 @@ def _candidate_limit_for_variant(k: int, metadata_filters: dict[str, Any] | None
     if metadata_filters:
         variant = str(metadata_filters.get("corpus_variant", "")).strip().lower()
     multiplier = 8 if variant == "focused_chunked" else 1
+    if variant == "focused_chunked_qc_filtered_v2":
+        multiplier = 8
     return max(k, k * multiplier)
 
 
@@ -169,7 +222,10 @@ def _coerce_metadata_filters(filters: dict[str, Any] | None) -> list[Any]:
         return []
 
     filter_expressions: list[Any] = []
+    control_only_fields = {"lexical_profile", "keyword_strategy"}
     for field, value in filters.items():
+        if field in control_only_fields:
+            continue
         column = convocatorias_table.c.get(field)
         if column is None:
             raise ValueError(f"Filtro de metadata no soportado: {field}")
@@ -242,31 +298,162 @@ def _tokenize_query(query: str) -> list[str]:
     return list(dict.fromkeys(filtered_tokens))
 
 
-def _build_keyword_score_and_clause(query: str) -> tuple[Any, Any] | None:
-    """Construye score keyword basado en coincidencia por tokens."""
-    tokens = _tokenize_query(query)
-    if not tokens:
-        return None
+def _resolve_lexical_profile(metadata_filters: dict[str, Any] | None) -> str:
+    if not metadata_filters:
+        return ""
+    return str(metadata_filters.get("lexical_profile", "")).strip().lower()
 
+
+def _resolve_keyword_strategy(metadata_filters: dict[str, Any] | None) -> str:
+    if not metadata_filters:
+        return "ilike"
+    strategy = str(metadata_filters.get("keyword_strategy", "ilike")).strip().lower()
+    return strategy or "ilike"
+
+
+def _expand_tokens(tokens: list[str], *, metadata_filters: dict[str, Any] | None = None) -> list[tuple[str, float]]:
+    """Expande consultas con sinonimos controlados de dominio cuando se habilita un perfil lexico."""
+    lexical_profile = _resolve_lexical_profile(metadata_filters)
+    weighted_tokens: list[tuple[str, float]] = [(token, 1.0) for token in tokens]
+    if lexical_profile != "domain_expansion_v1":
+        return weighted_tokens
+
+    seen_tokens = {token for token, _ in weighted_tokens}
+    for token in tokens:
+        for expanded_token in DOMAIN_QUERY_EXPANSIONS.get(token, ()):
+            if expanded_token in SPANISH_STOPWORDS or len(expanded_token) <= 2:
+                continue
+            if expanded_token in seen_tokens:
+                continue
+            weighted_tokens.append((expanded_token, 0.35))
+            seen_tokens.add(expanded_token)
+    return weighted_tokens
+
+
+def _resolve_keyword_field_weights(
+    metadata_filters: dict[str, Any] | None,
+) -> dict[str, float]:
+    variant = ""
+    if metadata_filters:
+        variant = str(metadata_filters.get("corpus_variant", "")).strip().lower()
+    return KEYWORD_FIELD_WEIGHTS_BY_VARIANT.get(variant, KEYWORD_FIELD_DEFAULT_WEIGHTS)
+
+
+def _build_keyword_score_and_clause(
+    query: str,
+    *,
+    metadata_filters: dict[str, Any] | None = None,
+) -> tuple[Any, Any] | None:
+    """Construye score keyword ponderado por campo y token."""
+    base_tokens = _tokenize_query(query)
+    if not base_tokens:
+        return None
+    weighted_tokens = _expand_tokens(base_tokens, metadata_filters=metadata_filters)
+
+    field_weights = _resolve_keyword_field_weights(metadata_filters)
     searchable_columns = [
-        convocatorias_table.c.texto_rag,
-        convocatorias_table.c.objeto_contratacion,
-        convocatorias_table.c.entidad,
-        convocatorias_table.c.cuce,
+        ("texto_rag", convocatorias_table.c.texto_rag),
+        ("objeto_contratacion", convocatorias_table.c.objeto_contratacion),
+        ("entidad", convocatorias_table.c.entidad),
+        ("cuce", convocatorias_table.c.cuce),
+        ("tipo_contratacion", convocatorias_table.c.tipo_contratacion),
+        ("modalidad", convocatorias_table.c.modalidad),
     ]
 
     token_score_expressions: list[Any] = []
     token_match_expressions: list[Any] = []
-    for token in tokens:
+    for token, token_weight in weighted_tokens:
         token_pattern = f"%{token}%"
-        token_matches = [column.ilike(token_pattern) for column in searchable_columns]
+        weighted_matches: list[Any] = []
+        token_matches: list[Any] = []
+        for field_name, column in searchable_columns:
+            token_match = column.ilike(token_pattern)
+            token_matches.append(token_match)
+            weight = field_weights.get(field_name, 0.0)
+            if weight > 0:
+                weighted_matches.append(case((token_match, weight * token_weight), else_=0.0))
         token_match = or_(*token_matches)
         token_match_expressions.append(token_match)
-        token_score_expressions.append(case((token_match, 1), else_=0))
+        token_score_expressions.append(sum(weighted_matches[1:], weighted_matches[0]))
 
     score_expression = sum(token_score_expressions[1:], token_score_expressions[0]).label("score")
     any_match_expression = or_(*token_match_expressions)
     return score_expression, any_match_expression
+
+
+def _build_fts_score_and_clause(
+    query: str,
+    *,
+    metadata_filters: dict[str, Any] | None = None,
+) -> tuple[Any, Any] | None:
+    """Construye score FTS ponderado por campo usando diccionario simple."""
+    base_tokens = _tokenize_query(query)
+    if not base_tokens:
+        return None
+    weighted_tokens = _expand_tokens(base_tokens, metadata_filters=metadata_filters)
+    search_terms = [token for token, _ in weighted_tokens]
+    if not search_terms:
+        return None
+
+    query_text = " ".join(list(dict.fromkeys(search_terms)))
+    ts_query = func.plainto_tsquery("simple", query_text)
+    weighted_vector = (
+        func.setweight(
+            func.to_tsvector("simple", func.coalesce(convocatorias_table.c.objeto_contratacion, "")),
+            literal_column("'A'"),
+        )
+        .op("||")(
+            func.setweight(
+                func.to_tsvector("simple", func.coalesce(convocatorias_table.c.cuce, "")),
+                literal_column("'A'"),
+            )
+        )
+        .op("||")(
+            func.setweight(
+                func.to_tsvector("simple", func.coalesce(convocatorias_table.c.entidad, "")),
+                literal_column("'B'"),
+            )
+        )
+        .op("||")(
+            func.setweight(
+                func.to_tsvector("simple", func.coalesce(convocatorias_table.c.tipo_contratacion, "")),
+                literal_column("'B'"),
+            )
+        )
+        .op("||")(
+            func.setweight(
+                func.to_tsvector("simple", func.coalesce(convocatorias_table.c.modalidad, "")),
+                literal_column("'C'"),
+            )
+        )
+        .op("||")(
+            func.setweight(
+                func.to_tsvector("simple", func.coalesce(convocatorias_table.c.texto_rag, "")),
+                literal_column("'D'"),
+            )
+        )
+    )
+    score_expression = func.ts_rank_cd(weighted_vector, ts_query).label("score")
+    any_match_expression = weighted_vector.op("@@")(ts_query)
+    return score_expression, any_match_expression
+
+
+def _rank_positions_by_cuce(payloads: list[dict[str, Any]]) -> dict[str, int]:
+    ranked: dict[str, int] = {}
+    for index, payload in enumerate(payloads, start=1):
+        cuce = str(payload.get("cuce", "")).strip()
+        if cuce and cuce not in ranked:
+            ranked[cuce] = index
+    return ranked
+
+
+def _hybrid_rrf_score(*, keyword_rank: int | None, semantic_rank: int | None) -> float:
+    score = 0.0
+    if keyword_rank is not None:
+        score += 0.8 / (50 + keyword_rank)
+    if semantic_rank is not None:
+        score += 0.4 / (50 + semantic_rank)
+    return score
 
 
 @lru_cache(maxsize=1)
@@ -463,7 +650,11 @@ def keyword_search(
     """Ejecuta busqueda keyword con tokenizacion y score por coincidencia."""
     top_k = k or settings.retrieval_top_k
     candidate_limit = _candidate_limit_for_variant(top_k, metadata_filters)
-    keyword_components = _build_keyword_score_and_clause(query)
+    keyword_strategy = _resolve_keyword_strategy(metadata_filters)
+    if keyword_strategy == "fts":
+        keyword_components = _build_fts_score_and_clause(query, metadata_filters=metadata_filters)
+    else:
+        keyword_components = _build_keyword_score_and_clause(query, metadata_filters=metadata_filters)
     if keyword_components is None:
         return []
 
@@ -490,7 +681,7 @@ def hybrid_search(
     *,
     candidate_pool_size: int = 50,
 ) -> list[dict[str, Any]]:
-    """Recupera candidatos keyword y los reranquea semanticamente."""
+    """Combina ranking keyword y semantico usando RRF con sesgo lexico."""
     _require_pgvector()
     top_k = k or settings.retrieval_top_k
     candidate_limit = _candidate_limit_for_variant(top_k, metadata_filters)
@@ -503,6 +694,13 @@ def hybrid_search(
     candidate_cuces = [item["cuce"] for item in keyword_candidates if item.get("cuce")]
     if not candidate_cuces:
         return semantic_search(query, k=top_k, metadata_filters=metadata_filters)
+
+    keyword_rank_by_cuce = _rank_positions_by_cuce(keyword_candidates)
+    keyword_score_by_cuce = {
+        str(item.get("cuce", "")).strip(): float(item.get("score", 0.0) or 0.0)
+        for item in keyword_candidates
+        if str(item.get("cuce", "")).strip()
+    }
 
     query_embedding = generate_embeddings([query])[0]
     distance = convocatorias_table.c.embedding.cosine_distance(query_embedding)
@@ -519,5 +717,38 @@ def hybrid_search(
     with engine.begin() as connection:
         rows = connection.execute(statement).all()
 
-    payloads = [_build_search_payload(row, "distance", row.distance) for row in rows]
-    return _deduplicate_payloads_by_cuce(payloads, k=top_k)
+    semantic_payloads = [_build_search_payload(row, "distance", row.distance) for row in rows]
+    semantic_payloads = _deduplicate_payloads_by_cuce(semantic_payloads, k=expanded_candidate_pool)
+    semantic_rank_by_cuce = _rank_positions_by_cuce(semantic_payloads)
+
+    merged_payloads: list[dict[str, Any]] = []
+    seen_cuces: set[str] = set()
+    ordered_cuces = list(dict.fromkeys(candidate_cuces + list(semantic_rank_by_cuce)))
+    for cuce in ordered_cuces:
+        if not cuce or cuce in seen_cuces:
+            continue
+        semantic_payload = next((item for item in semantic_payloads if item.get("cuce") == cuce), None)
+        keyword_payload = next((item for item in keyword_candidates if item.get("cuce") == cuce), None)
+        payload = semantic_payload or keyword_payload
+        if payload is None:
+            continue
+        merged = dict(payload)
+        merged["keyword_rank"] = keyword_rank_by_cuce.get(cuce)
+        merged["semantic_rank"] = semantic_rank_by_cuce.get(cuce)
+        merged["keyword_score"] = keyword_score_by_cuce.get(cuce, 0.0)
+        merged["hybrid_score"] = _hybrid_rrf_score(
+            keyword_rank=keyword_rank_by_cuce.get(cuce),
+            semantic_rank=semantic_rank_by_cuce.get(cuce),
+        )
+        merged_payloads.append(merged)
+        seen_cuces.add(cuce)
+
+    merged_payloads.sort(
+        key=lambda item: (
+            float(item.get("hybrid_score", 0.0)),
+            float(item.get("keyword_score", 0.0)),
+            -float(item.get("distance", 1.0) or 1.0),
+        ),
+        reverse=True,
+    )
+    return merged_payloads[:top_k]

@@ -1,0 +1,23 @@
+\begin{table}[ht]
+\centering
+\caption{Resumen de resultados cualitativos del sistema RAG}
+\label{tab:resumen-rag-cualitativo}
+\begin{tabular}{p{1.6cm} p{2.7cm} p{2.8cm} p{3.7cm} p{3.7cm}}
+\hline
+\textbf{Caso} & \textbf{Foco} & \textbf{Escenarios} & \textbf{Hallazgo principal} & \textbf{Aporte observado del RAG} \\
+\hline
+\texttt{biz\_001} & Medicamentos hospitalarios & \texttt{keyword\_base} vs \texttt{hybrid\_base} & Ambos escenarios recuperan oportunidades plausibles; \texttt{keyword} es más selectivo y \texttt{hybrid} más exhaustivo. & Explica pertinencia y descarta ruido con grounding limpio. \\
+\hline
+\texttt{biz\_002} & Reactivos de laboratorio & \texttt{keyword\_base} vs \texttt{hybrid\_base} & Ambos escenarios recuperan procesos muy alineados; \texttt{hybrid} enfatiza mejor subáreas técnicas de laboratorio. & Convierte el top-k en evidencia útil para un proveedor. \\
+\hline
+\texttt{biz\_003} & Software en salud & \texttt{keyword\_base} vs \texttt{hybrid\_base} & Ambos escenarios identifican el único CUCE realmente de software; \texttt{keyword} explica mejor el ruido y \texttt{hybrid} prioriza con más fuerza. & Desambigua software real frente a equipamiento o servicios no relacionados. \\
+\hline
+\texttt{biz\_004} & Resumen de requisitos de alcantarillado & \texttt{keyword\_base} vs \texttt{hybrid\_base} & \texttt{keyword} mezcla procesos de agua potable; \texttt{hybrid} aterriza mejor en un CUCE explícito de alcantarillado sanitario. & Produce una síntesis más útil cuando el retrieval enfoca mejor la intención de la consulta. \\
+\hline
+\texttt{biz\_008} & Alineación de rubro en obras sanitarias & \texttt{keyword\_base} vs \texttt{hybrid\_base} & Ambos escenarios detectan bastante ruido; \texttt{hybrid} encuentra una obra más claramente sanitaria que \texttt{keyword}. & Filtra ruido y justifica cuál proceso vale la pena revisar. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Síntesis interpretativa.}
+Los casos evaluados muestran que el principal valor del sistema RAG no estuvo en mejorar de forma consistente el ranking inicial de búsqueda, sino en transformar resultados recuperados en explicaciones útiles para el proveedor. En particular, el RAG permitió justificar pertinencia, resumir requisitos, descartar ruido y orientar decisiones preliminares. En consecuencia, la evidencia sugiere una arquitectura donde el retrieval cumple la función de detección inicial de candidatos y el RAG aporta valor principalmente en la fase posterior de análisis documental y soporte a decisión.

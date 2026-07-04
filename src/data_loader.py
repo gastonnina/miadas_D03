@@ -8,7 +8,9 @@ import pandas as pd
 
 from src.config import (
     CURATED_FOCUSED_CHUNKED_PARQUET_PATH,
+    CURATED_FOCUSED_CHUNKED_QC_FILTERED_V2_PARQUET_PATH,
     CURATED_ENRICHED_PARQUET_PATH,
+    CURATED_ENRICHED_QC_FILTERED_PARQUET_PATH,
     EVALUATION_DEV_PATH,
     EVALUATION_TEST_PATH,
     EVALUATION_VAL_PATH,
@@ -151,6 +153,25 @@ def load_focused_chunked_retrieval_corpus() -> pd.DataFrame:
         CURATED_FOCUSED_CHUNKED_PARQUET_PATH,
         text_column=RAG_TEXT_COLUMN,
         corpus_variant="focused_chunked",
+        document_id_suffix="",
+    )
+
+
+def load_enriched_qc_filtered_retrieval_corpus() -> pd.DataFrame:
+    """Carga el corpus enriquecido filtrado por quality gate."""
+    return build_retrieval_corpus(
+        CURATED_ENRICHED_QC_FILTERED_PARQUET_PATH,
+        text_column=RAG_ENRICHED_TEXT_COLUMN,
+        corpus_variant="enriched_qc_filtered",
+    )
+
+
+def load_focused_chunked_qc_filtered_v2_retrieval_corpus() -> pd.DataFrame:
+    """Carga el corpus focused_chunked v2 construido sobre quality gate."""
+    return build_retrieval_corpus(
+        CURATED_FOCUSED_CHUNKED_QC_FILTERED_V2_PARQUET_PATH,
+        text_column=RAG_TEXT_COLUMN,
+        corpus_variant="focused_chunked_qc_filtered_v2",
         document_id_suffix="",
     )
 
