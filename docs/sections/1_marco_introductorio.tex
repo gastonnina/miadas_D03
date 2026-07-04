@@ -7,34 +7,106 @@
 \end{center}
 
 \newpage
-\chapter{Marco Introductorio}
+\pagenumbering{arabic}
+\section*{}
+\begin{center}
+	\Large \textbf{INTRODUCCIÓN}
+\end{center}
 
-\section{Introducción}
+La transformación digital de los procesos de búsqueda y análisis de información ha incrementado el interés por sistemas capaces de recuperar contenidos relevantes y, al mismo tiempo, ofrecer explicaciones útiles para la toma de decisiones. En el ámbito de las contrataciones públicas, esta necesidad adquiere particular importancia, ya que proveedores, consultoras y empresas deben revisar convocatorias con rapidez para identificar oportunidades compatibles con su rubro, sus capacidades técnicas y sus plazos operativos.
 
-La búsqueda de convocatorias públicas en el portal SICOES constituye una actividad relevante para empresas, consultoras y proveedores que participan en procesos de contratación estatal en Bolivia. Sin embargo, la exploración manual o basada únicamente en palabras clave presenta limitaciones cuando las necesidades del usuario no coinciden exactamente con la redacción administrativa del objeto de contratación.
+En el caso boliviano, el portal del Sistema de Contrataciones Estatales (SICOES) concentra un volumen considerable de convocatorias con descripciones administrativas y documentales que no siempre facilitan una recuperación precisa desde consultas expresadas en lenguaje natural. Esta situación motiva la exploración de estrategias basadas en recuperación semántica y \textit{Retrieval-Augmented Generation} (RAG), con la expectativa de mejorar tanto la búsqueda inicial como la interpretación posterior de las convocatorias recuperadas.
 
-\section{Planteamiento del problema}
+Sin embargo, la incorporación de estas técnicas no garantiza por sí misma mejores resultados. Su efectividad depende de la calidad del corpus, de la consistencia entre metadatos y documentos asociados, así como de la pertinencia del mecanismo de retrieval utilizado. Por ello, el presente trabajo evalúa, en el contexto del dominio SICOES, hasta qué punto una estrategia basada en recuperación semántica y RAG puede aportar valor real frente a mecanismos tradicionales de búsqueda apoyados en coincidencias textuales.
 
-Los mecanismos tradicionales de búsqueda se apoyan principalmente en coincidencias textuales. Este enfoque reduce la capacidad de recuperación cuando una convocatoria describe el mismo requerimiento con terminología distinta, sinónimos o expresiones técnicas sectoriales.
+En este sentido, el capítulo introductorio expone el problema abordado, los objetivos perseguidos, la justificación del estudio, la metodología empleada y los principales alcances y límites que delimitan la investigación.
 
-No obstante, en dominios administrativos como SICOES también existen consultas donde la coincidencia léxica exacta sigue siendo altamente efectiva. Por ello, el presente trabajo no asume a priori la superioridad universal de la búsqueda semántica pura, sino que compara de manera reproducible estrategias keyword, semánticas e híbridas para identificar la combinación más adecuada al dominio.
+\newpage
+\chapter{MARCO INTRODUCTORIO}
 
-\section{Objetivo general}
+\section{Problema}
 
-Diseñar e implementar un sistema inteligente de recuperación semántica para convocatorias públicas del SICOES mediante embeddings, PostgreSQL con pgvector y Retrieval-Augmented Generation.
+\subsection{Antecedentes del problema}
 
-\section{Objetivos específicos}
+La participación de empresas, consultoras y proveedores en procesos de contratación pública depende, en gran medida, de su capacidad para identificar oportunamente convocatorias pertinentes a su rubro. En Bolivia, esta búsqueda se realiza principalmente a través del portal del Sistema de Contrataciones Estatales (SICOES), donde las convocatorias son publicadas con información administrativa, técnica y documental que debe ser revisada por los interesados antes de decidir si una oportunidad es adecuada para su perfil.
 
-\begin{enumerate}
-    \item Extraer convocatorias públicas vigentes del portal SICOES.
-    \item Limpiar y transformar los datos para construir un dataset orientado a recuperación semántica.
-    \item Generar embeddings sobre las convocatorias.
-    \item Implementar PostgreSQL con pgvector como base vectorial principal.
-    \item Desarrollar una línea base de búsqueda tradicional usando SQL e \texttt{ILIKE}.
-    \item Construir un prototipo de consulta tipo chatbot con LangChain.
-    \item Evaluar búsqueda keyword, búsqueda semántica y una alternativa híbrida.
-\end{enumerate}
+En la práctica, este proceso suele presentar dificultades. Muchas convocatorias utilizan descripciones administrativas extensas, formulaciones heterogéneas o terminología sectorial que no siempre coincide con la forma en que un proveedor formula su necesidad de búsqueda. Por ejemplo, una empresa interesada en medicamentos hospitalarios, reactivos de laboratorio o soluciones informáticas en salud puede no recuperar los procesos más relevantes si la consulta depende únicamente de coincidencias exactas de palabras, o si la redacción del objeto de contratación utiliza expresiones distintas a las esperadas por el usuario.
+
+Frente a esta situación, en distintos dominios de recuperación de información se ha propuesto el uso de técnicas de búsqueda semántica y de estrategias de \textit{Retrieval-Augmented Generation} (RAG), con el objetivo de mejorar la recuperación de contenidos y complementar la respuesta con explicaciones basadas en evidencia documental. Sin embargo, su utilidad no puede asumirse de manera automática en cualquier contexto. En dominios administrativos y documentales como SICOES, la efectividad de estas estrategias depende de factores como la calidad del corpus, la consistencia entre metadatos y documentos asociados, la cobertura de información técnica y la capacidad del sistema para distinguir entre procesos pertinentes y ruido documental.
+
+En este marco, surge la necesidad de evaluar de manera rigurosa si un sistema basado en recuperación semántica y RAG puede aportar valor real en la búsqueda y análisis de convocatorias públicas, o si, por el contrario, el comportamiento del dominio favorece todavía a estrategias léxicas más simples en la etapa inicial de recuperación.
+
+\subsection{Planteamiento del problema}
+
+En función del planteamiento expuesto, la presente investigación se orienta a responder la siguiente pregunta central:
+
+\begin{center}
+\textbf{\large ¿En qué medida un sistema de recuperación semántica complementado con RAG puede mejorar la identificación y el análisis de convocatorias públicas del SICOES frente a mecanismos tradicionales de búsqueda basados en coincidencia textual?}
+\end{center}
+
+\section{Objetivos}
+
+\subsection{Objetivo general}
+
+Implementar un sistema de recuperación de información para convocatorias públicas del SICOES, basado en búsqueda semántica y complementado con RAG, para evaluar su aporte en la identificación y el análisis de procesos de contratación frente a mecanismos tradicionales de búsqueda textual.
+
+\subsection{Objetivos específicos}
+
+\begin{itemize}
+    \item Analizar la estructura, consistencia y calidad del conjunto de convocatorias públicas del SICOES para determinar su idoneidad en tareas de recuperación de información.
+    \item Diseñar un esquema de recuperación semántica basado en embeddings y PostgreSQL con \texttt{pgvector}, complementado con un componente RAG para el análisis de detalle de las convocatorias recuperadas.
+    \item Desarrollar una línea base de búsqueda textual y un prototipo de consulta que permita contrastar mecanismos léxicos, semánticos e híbridos dentro del dominio de contrataciones públicas.
+    \item Evaluar el desempeño y la utilidad práctica del sistema propuesto mediante métricas de recuperación, consultas representativas y análisis cualitativo de respuestas generadas.
+\end{itemize}
 
 \section{Justificación}
 
-La propuesta es pertinente por su valor práctico y académico. En el plano aplicado, puede facilitar el acceso a oportunidades de contratación pública. En el plano metodológico, permite documentar un caso reproducible de integración entre procesamiento de lenguaje natural, bases vectoriales y generación aumentada por recuperación en un contexto boliviano.
+\subsection{Justificación teórica}
+
+La presente investigación se justifica teóricamente porque examina, en un dominio documental específico como el SICOES, el comportamiento de enfoques de recuperación léxica, recuperación semántica y \textit{Retrieval-Augmented Generation} (RAG). Su aporte radica en generar evidencia sobre las condiciones en las que estas técnicas efectivamente mejoran la búsqueda de información y en identificar factores que limitan su desempeño, tales como la calidad del corpus, la consistencia entre metadatos y documentos asociados, y la naturaleza de las consultas del dominio.
+
+\subsection{Justificación práctica}
+
+Desde el punto de vista práctico, el estudio resulta relevante porque aborda una necesidad real de empresas, consultoras y proveedores que deben revisar convocatorias públicas de manera rápida y pertinente. La implementación y evaluación del sistema propuesto permite valorar hasta qué punto una estrategia híbrida puede apoyar la identificación inicial de procesos de interés y, posteriormente, el análisis detallado de sus requisitos, plazos y documentos, contribuyendo así a una búsqueda más útil y fundamentada dentro del contexto de contrataciones públicas.
+
+\section{Metodología de investigación}
+
+\subsection{Población}
+
+La población de estudio está conformada por las convocatorias públicas publicadas en el Sistema de Contrataciones Estatales (SICOES), junto con sus metadatos descriptivos y la documentación asociada disponible para consulta, en particular los Documentos Base de Contratación (DBC). Este conjunto constituye la fuente principal de información sobre la cual se desarrolló y evaluó la propuesta de recuperación de información.
+
+\subsection{Muestra}
+
+La muestra corresponde al subconjunto de convocatorias recolectadas, depuradas y transformadas para la construcción del corpus experimental, incluyendo los registros utilizados para indexación, las particiones de evaluación y los casos seleccionados para validación cualitativa. Su conformación respondió a criterios de disponibilidad documental, consistencia mínima de metadatos y pertinencia para consultas representativas del dominio de contrataciones públicas.
+
+\subsection{Técnicas e instrumentos}
+
+Se emplearon técnicas de revisión documental, extracción y depuración de datos, indexación semántica, experimentación con consultas de prueba y evaluación comparativa de resultados. Como instrumentos principales se utilizaron el corpus de convocatorias del SICOES, scripts de procesamiento, PostgreSQL con \texttt{pgvector}, modelos de embeddings, mecanismos de búsqueda textual y semántica y un componente RAG. La evaluación cuantitativa consideró las métricas \textit{Precision@5}, \textit{Recall@5}, \textit{MRR} y \textit{Hit@5}, complementadas con análisis cualitativo de respuestas generadas.
+
+\subsection{Comparación metodológica}
+
+La comparación metodológica se enmarca en una adaptación de CRISP-DM, particularmente en las fases de comprensión del problema, preparación de los datos, modelado y evaluación. Se compararon tres enfoques de recuperación: búsqueda textual basada en coincidencia léxica, búsqueda semántica basada en embeddings y un esquema híbrido complementado con RAG. La comparación consideró métricas de recuperación sobre consultas representativas y análisis cualitativo de respuestas, priorizando la pertinencia de los resultados y la utilidad del sistema para el dominio de contrataciones públicas.
+
+\section{Alcances y límites}
+
+\subsection{Alcances}
+
+El alcance de la presente monografía comprende los siguientes aspectos:
+
+\begin{itemize}
+    \item Implementar un sistema de recuperación de información aplicado a convocatorias públicas vigentes del SICOES correspondientes a la gestión 2026, basado en búsqueda textual, búsqueda semántica y recuperación híbrida.
+    \item Estructurar un corpus de trabajo a partir de metadatos de convocatorias vigentes de 2026 y, cuando estuvieron disponibles, Documentos Base de Contratación (DBC).
+    \item Comparar el desempeño de distintos enfoques de retrieval mediante métricas cuantitativas de recuperación sobre consultas representativas del dominio.
+    \item Validar el aporte del esquema RAG en tareas de análisis, resumen y explicación de convocatorias recuperadas.
+\end{itemize}
+
+\subsection{Límites}
+
+El presente estudio se limita a los siguientes puntos:
+
+\begin{itemize}
+    \item El análisis se basa en la información publicada en el SICOES para convocatorias vigentes de la gestión 2026, por lo que cualquier omisión, inconsistencia o diferencia entre metadatos y documentos asociados puede afectar la precisión de los resultados obtenidos.
+    \item La disponibilidad de Documentos Base de Contratación no es homogénea en todos los registros, y en varios casos se observaron problemas de alineación entre el CUCE del proceso y la documentación vinculada.
+    \item La evaluación se realizó sobre un conjunto curado de consultas representativas del dominio, por lo que los resultados no deben interpretarse como una generalización absoluta para todo el universo de contrataciones públicas ni para otros periodos de publicación.
+    \item La utilidad del componente RAG depende de la pertinencia del retrieval previo y del grado de cobertura documental disponible en cada caso, por lo que su desempeño no puede considerarse independiente de la calidad del corpus.
+\end{itemize}

@@ -149,11 +149,11 @@ Separar el análisis en dos niveles:
 
 ## Limitación actual del entorno
 
-En este momento local:
+Estado actual del entorno:
 
 1. el pipeline reproducible ya está preparado;
-2. las claves LLM no están configuradas;
-3. por eso es posible generar la tabla de escenarios y la rúbrica, pero no todavía ejemplos reales de respuesta automática desde este entorno hasta que se habilite un proveedor.
+2. ya se validó ejecución con Gemini `2.5 Flash` en free tier;
+3. por las limitaciones del free tier, conviene ejecutar lotes pequeños y priorizar casos representativos sobre barridos masivos.
 
 ## Archivos clave
 

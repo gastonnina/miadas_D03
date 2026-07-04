@@ -1,0 +1,31 @@
+\begin{table}[ht]
+\centering
+\caption{Resumen cuantitativo de retrieval por variante de corpus}
+\label{tab:resumen-cuantitativo-retrieval}
+\begin{tabular}{l l c c c c}
+\hline
+\textbf{Split} & \textbf{Método} & \textbf{P@5} & \textbf{R@5} & \textbf{MRR} & \textbf{Hit@5} \\
+\hline
+dev & \texttt{keyword\_base} & 0.2667 & 0.8194 & 0.8889 & 1.0000 \\
+dev & \texttt{hybrid\_base} & 0.2333 & 0.7778 & 0.8333 & 0.8333 \\
+dev & \texttt{keyword\_enriched\_qc\_filtered} & 0.2667 & 0.8194 & 0.8889 & 1.0000 \\
+dev & \texttt{hybrid\_enriched\_qc\_filtered} & 0.1333 & 0.4444 & 0.5000 & 0.5000 \\
+dev & \texttt{keyword\_focused\_qc\_filtered\_v2} & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+\hline
+val & \texttt{keyword\_base} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+val & \texttt{hybrid\_base} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+val & \texttt{keyword\_enriched\_qc\_filtered} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+val & \texttt{hybrid\_enriched\_qc\_filtered} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+val & \texttt{keyword\_focused\_qc\_filtered\_v2} & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+\hline
+test & \texttt{keyword\_base} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+test & \texttt{hybrid\_base} & 0.1333 & 0.6667 & 0.6667 & 0.6667 \\
+test & \texttt{keyword\_enriched\_qc\_filtered} & 0.2000 & 1.0000 & 1.0000 & 1.0000 \\
+test & \texttt{hybrid\_enriched\_qc\_filtered} & 0.0667 & 0.3333 & 0.3333 & 0.3333 \\
+test & \texttt{keyword\_focused\_qc\_filtered\_v2} & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Lectura cuantitativa.}
+Los resultados muestran que \texttt{keyword\_base} se mantuvo como la referencia más estable del estudio. La variante \texttt{enriched\_qc\_filtered} preservó el rendimiento de \texttt{keyword} pero no produjo una mejora consistente, mientras que \texttt{hybrid\_enriched\_qc\_filtered} degradó el desempeño en \texttt{dev} y \texttt{test}. Por su parte, \texttt{focused\_chunked\_qc\_filtered\_v2} colapsó en los tres splits debido a cobertura nula sobre los CUCE relevantes del benchmark. En consecuencia, la evidencia cuantitativa no respalda que el enriquecimiento con DBC, en el estado del corpus analizado, mejore el retrieval respecto al baseline léxico.
