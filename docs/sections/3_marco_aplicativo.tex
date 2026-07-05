@@ -7,40 +7,1038 @@
 \end{center}
 
 \newpage
-\chapter{Marco Aplicativo}
+\chapter{MARCO APLICATIVO}
 
-\section{Metodología}
+\section{Comprensión del problema de negocio}
 
-El proyecto adopta CRISP-DM como metodología principal. Esta elección permite organizar de manera sistemática las fases de comprensión del problema, comprensión de los datos, preparación, modelado, evaluación y despliegue.
+La primera fase de la metodología CRISP-DM corresponde a la comprensión del problema de negocio, cuyo objetivo es identificar las necesidades del dominio de aplicación, comprender el contexto en el que se desarrollará la solución y definir claramente los objetivos que se pretenden alcanzar. En esta etapa no se abordan aspectos técnicos relacionados con modelos de inteligencia artificial o algoritmos de recuperación, sino que se analiza el problema desde la perspectiva de los usuarios finales y de los procesos que se desean mejorar.
 
-\section{Arquitectura propuesta}
+En la presente investigación, el dominio de aplicación corresponde al Sistema de Contrataciones Estatales (SICOES), plataforma utilizada para la publicación y consulta de procesos de contratación pública en el Estado Plurinacional de Bolivia. Dentro de estos procesos, los Documentos Base de Contratación (DBC) constituyen la principal fuente de información para proveedores, empresas y consultores interesados en participar en licitaciones públicas.
 
-La arquitectura objetivo se organiza como sigue:
+El análisis realizado permitió identificar que, si bien el SICOES proporciona mecanismos de búsqueda basados principalmente en coincidencias textuales y filtros estructurados, la interpretación del contenido de los DBC continúa dependiendo en gran medida de la revisión manual realizada por los usuarios. Esta situación puede dificultar la identificación rápida de requisitos específicos, criterios de evaluación, garantías exigidas y demás información relevante contenida en documentos extensos.
 
-\begin{center}
-\texttt{SICOES → Raw → Clean → RAG Dataset → PostgreSQL → pgvector → LangChain → Streamlit}
-\end{center}
+En este contexto, la utilización de técnicas de Procesamiento del Lenguaje Natural (NLP), recuperación semántica y modelos de lenguaje de gran tamaño representa una alternativa para complementar los mecanismos tradicionales de consulta documental. Bajo este enfoque, el sistema desarrollado busca recuperar automáticamente la información más relevante de los DBC y utilizarla como contexto para generar respuestas fundamentadas mediante una arquitectura Retrieval-Augmented Generation (RAG).
 
-Esta arquitectura también incorpora una línea base de búsqueda SQL utilizando \texttt{ILIKE}, con el fin de comparar desempeño frente a la búsqueda semántica.
+A continuación se describen con mayor detalle el contexto del dominio de aplicación, la problemática identificada y los objetivos perseguidos durante el desarrollo del presente trabajo.
 
-\section{Preparación de datos}
+\subsection{Contexto del Sistema de Contrataciones Estatales (SICOES)}
 
-La preparación contempla limpieza de HTML, normalización de columnas, deduplicación, conversión de fechas, construcción de \texttt{document\_id} y generación del campo \texttt{texto\_rag}. El proyecto conserva Parquet como formato principal versionable del corpus, mientras que los CSV se usan sólo como salidas auxiliares de evaluación y trazabilidad.
+El Sistema de Contrataciones Estatales (SICOES) constituye la plataforma oficial utilizada en Bolivia para la publicación y consulta de información relacionada con los procesos de contratación pública. A través de este sistema, las entidades estatales difunden convocatorias, cronogramas, documentos técnicos y administrativos, adjudicaciones, contratos y otra documentación asociada a cada proceso de contratación.
 
-\section{Modelado y almacenamiento vectorial}
+Entre los documentos publicados, los Documentos Base de Contratación (DBC) representan el principal instrumento utilizado para establecer las condiciones de participación de los proveedores. Estos documentos contienen información relacionada con el objeto de la contratación, especificaciones técnicas, criterios de evaluación, requisitos legales, garantías, cronogramas y demás condiciones que regulan el proceso de selección.
 
-Se emplea un modelo inicial de embeddings multilingüe de la familia Sentence Transformers, variante \texttt{paraphrase-multilingual-MiniLM-L12-v2}, cuyas representaciones de 384 dimensiones se almacenan en PostgreSQL con \texttt{pgvector}. Esta configuración mejora la cobertura para consultas en español sin alterar el esquema actual de almacenamiento vectorial, y permite búsquedas semánticas, filtros estructurados y estrategias híbridas.
+Dependiendo de la modalidad de contratación, un DBC puede superar fácilmente varias decenas de páginas, integrando información técnica, administrativa y normativa dentro de un único documento. Esta característica incrementa el tiempo requerido para localizar información específica y dificulta la comparación entre diferentes convocatorias cuando un proveedor analiza múltiples procesos de contratación de manera simultánea.
+
+En consecuencia, disponer de mecanismos que permitan recuperar información relevante utilizando consultas expresadas en lenguaje natural puede contribuir a facilitar la exploración del contenido documental, reduciendo el tiempo invertido en la revisión manual de los DBC y proporcionando un acceso más eficiente a la información requerida por los usuarios.
+
+\subsection{Problemática identificada}
+
+Durante el análisis del dominio se identificó que los mecanismos tradicionales de búsqueda disponibles para documentos de contratación pública se encuentran orientados principalmente a coincidencias exactas entre palabras clave o a filtros estructurados asociados al proceso de contratación. Aunque estos mecanismos permiten localizar convocatorias específicas, presentan limitaciones cuando el usuario requiere obtener información basada en el significado del contenido documental.
+
+Por ejemplo, una consulta formulada utilizando sinónimos, expresiones equivalentes o descripciones funcionales puede no recuperar documentos relevantes si las palabras utilizadas no coinciden literalmente con el texto presente en el Documento Base de Contratación. Asimismo, una vez localizado un documento, el usuario debe realizar una revisión manual para identificar cláusulas específicas relacionadas con requisitos técnicos, garantías, experiencia solicitada o criterios de evaluación.
+
+
+Esta situación resulta particularmente relevante considerando que los DBC constituyen documentos extensos y heterogéneos, donde la información de interés puede encontrarse distribuida en diferentes secciones del documento. En consecuencia, el proceso de búsqueda e interpretación demanda un esfuerzo considerable por parte de los proveedores interesados en participar en procesos de contratación pública.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{figures/3_1_business_problem_diagram.png}
+    \caption{Problema de negocio y enfoque general de la solución propuesta.}
+    \label{fig:business_problem}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:business_problem}, el proceso tradicional de revisión de los Documentos Base de Contratación requiere que el proveedor consulte manualmente documentos extensos para localizar información relevante. La solución propuesta incorpora un mecanismo de recuperación semántica complementado con una arquitectura Retrieval-Augmented Generation (RAG), permitiendo transformar consultas expresadas en lenguaje natural en respuestas fundamentadas sobre el contenido documental recuperado. De esta manera, se busca reducir el tiempo de análisis de las convocatorias y facilitar el acceso a información relevante para la toma de decisiones.
+
+Frente a esta problemática surge la necesidad de desarrollar mecanismos capaces de recuperar información utilizando similitud semántica y generar respuestas fundamentadas en evidencia documental, complementando los mecanismos tradicionales de búsqueda disponibles en el SICOES.
+
+
+
+\subsection{Objetivos de la solución propuesta}
+
+Como respuesta a la problemática identificada, la presente investigación propone el desarrollo de un sistema de recuperación semántica de información basado en una arquitectura Retrieval-Augmented Generation (RAG), orientada a mejorar el acceso al contenido de los Documentos Base de Contratación publicados en el SICOES.
+
+La solución desarrollada integra diferentes componentes tecnológicos que abarcan la extracción y preparación del corpus documental, la aplicación de técnicas de Procesamiento del Lenguaje Natural, la generación de embeddings mediante modelos Sentence Transformers, el almacenamiento de representaciones vectoriales utilizando PostgreSQL junto con la extensión pgvector y la incorporación de modelos de lenguaje para la generación de respuestas fundamentadas.
+
+A diferencia de un sistema conversacional convencional, el propósito del sistema no consiste en responder utilizando únicamente el conocimiento interno del modelo de lenguaje, sino en construir las respuestas a partir de información recuperada directamente desde los Documentos Base de Contratación. De esta manera se busca reducir la generación de información no sustentada y proporcionar respuestas apoyadas en evidencia documental.
+
+Finalmente, el sistema es evaluado mediante métricas cuantitativas de recuperación de información y procedimientos de validación cualitativa, permitiendo analizar el comportamiento de diferentes estrategias de búsqueda sobre el dominio documental considerado.
+
+\section{Comprensión de los datos}
+
+La fase de Comprensión de los Datos de la metodología CRISP-DM tiene como objetivo identificar las fuentes de información disponibles, conocer la estructura y características de los datos, evaluar su calidad y determinar su pertinencia para el problema planteado. En esta etapa se realiza un análisis inicial del conjunto documental que servirá como base para la construcción del sistema de recuperación semántica.
+
+En la presente investigación, la principal fuente de información corresponde a los Documentos Base de Contratación (DBC) publicados en el Sistema de Contrataciones Estatales (SICOES). Estos documentos contienen las especificaciones técnicas, administrativas y legales que regulan los procesos de contratación pública desarrollados por las diferentes entidades del Estado.
+
+A diferencia de conjuntos de datos estructurados utilizados en problemas tradicionales de minería de datos, los DBC constituyen un corpus documental compuesto por archivos en diferentes formatos, principalmente PDF, DOC y DOCX. Esta característica requiere la aplicación de técnicas de extracción de texto y procesamiento del lenguaje natural antes de poder realizar tareas de indexación y recuperación de información.
+
+Durante esta fase también se analizaron las características generales del corpus, identificando la diversidad de formatos, la longitud de los documentos, la presencia de tablas, encabezados, pies de página y otros elementos propios de documentos administrativos. Este análisis permitió definir posteriormente las estrategias de limpieza, normalización y segmentación utilizadas durante la fase de preparación de los datos.
+
+\subsection{Fuente de información}
+
+La información utilizada en esta investigación fue obtenida del Sistema de Contrataciones Estatales (SICOES), plataforma oficial del Estado Plurinacional de Bolivia destinada a la publicación y administración de procesos de contratación pública. El acceso a esta información se realizó utilizando únicamente documentos disponibles públicamente, respetando la estructura de publicación establecida por la plataforma.
+
+El principal insumo documental corresponde a los Documentos Base de Contratación (DBC), los cuales contienen información técnica y administrativa necesaria para la participación de proveedores en procesos de contratación pública. Entre otros aspectos, estos documentos incluyen especificaciones técnicas, requisitos legales, criterios de evaluación, cronogramas, formularios y condiciones generales de contratación.
+
+Debido a que los DBC representan la fuente oficial utilizada por las entidades públicas para comunicar las condiciones de contratación, constituyen un corpus adecuado para evaluar técnicas de recuperación semántica y generación aumentada mediante modelos de lenguaje.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.92\textwidth]{figures/3_2_sicoes_portal.png}
+    \caption{Portal del Sistema de Contrataciones Estatales (SICOES), fuente de información utilizada para la obtención del corpus documental.}
+    \label{fig:sicoes}
+\end{figure}
+
+
+\subsection{Obtención del corpus documental}
+
+La construcción del corpus documental se realizó mediante un proceso automatizado de recopilación de información desde el portal SICOES. Para cada proceso de contratación seleccionado se obtuvo el Documento Base de Contratación junto con información descriptiva asociada, como el código del proceso, entidad convocante, objeto de contratación y otros metadatos disponibles.
+
+Posteriormente, los documentos fueron organizados dentro de una estructura de directorios que permitió separar los archivos originales de los conjuntos de datos generados durante las diferentes etapas del procesamiento. Esta organización facilitó la trazabilidad del proceso y la reproducción de los experimentos desarrollados en la presente investigación.
+
+El resultado de esta etapa fue un corpus compuesto por documentos administrativos en diferentes formatos, el cual constituye la base para las etapas posteriores de extracción textual, limpieza, generación de embeddings y recuperación semántica.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/3_2_2_obtencion_corpus_documental.png}
+    \caption{Proceso de obtención del corpus documental a partir de los Documentos Base de Contratación publicados en el portal SICOES.}
+    \caption*{\textbf{Fuente:} Elaboración propia.}
+    \label{fig:obtencion_corpus}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:obtencion_corpus}, la construcción del corpus documental comprende una secuencia de etapas que inicia con la obtención de los Documentos Base de Contratación desde el portal SICOES. Posteriormente, se realiza la extracción del contenido textual, la consolidación de metadatos relevantes y la organización de la información en una estructura tabular que constituye el corpus documental inicial. Este corpus sirve como punto de partida para las etapas de preparación, enriquecimiento y generación de embeddings descritas en las siguientes secciones.
+
+\subsection{Análisis exploratorio del corpus}
+
+Una vez construido el corpus documental, se realizó un análisis exploratorio con el propósito de identificar las principales características de los documentos recopilados. Este análisis permitió conocer la distribución de formatos, la longitud aproximada de los textos, la disponibilidad de metadatos y la presencia de elementos que posteriormente debían ser tratados durante la fase de preparación de los datos.
+
+Se observó que los Documentos Base de Contratación presentan una estructura relativamente homogénea desde el punto de vista administrativo; sin embargo, existen diferencias importantes en extensión, organización del contenido y nivel de detalle técnico dependiendo del tipo de proceso de contratación y de la entidad convocante.
+
+Asimismo, se identificó la presencia de información repetitiva, encabezados institucionales, numeraciones, tablas y elementos de formato que, aunque resultan útiles para la presentación del documento, introducen ruido para las tareas de recuperación semántica. Estas observaciones justifican la aplicación de técnicas de limpieza y normalización descritas en la siguiente sección.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/3_2_3_extraccion_corpus_sicoes.png}
+    \caption{Proceso de adquisición del corpus documental utilizado en la investigación.}
+    \caption*{\textbf{Fuente:} Elaboración propia.}
+    \label{fig:extraccion_corpus_sicoes}
+\end{figure}
+Como se observa en la Figura \ref{fig:extraccion_corpus_sicoes}, el proceso de adquisición del corpus fue completamente automatizado. Durante la ejecución se consultaron 142 páginas del portal SICOES, recuperando un total de 1\,419 convocatorias. La información obtenida fue almacenada en formatos estructurados (JSONL, Parquet y CSV), garantizando la reproducibilidad del proceso y facilitando las etapas posteriores de limpieza, transformación y construcción del corpus utilizado por la arquitectura RAG.
+
+\begin{table}[H]
+\centering
+\caption{Características generales del corpus documental utilizado en la investigación.}
+\label{tab:corpus_general}
+
+\begin{tabular}{p{8cm}c}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Documentos Base de Contratación recopilados & 1\,429 \\
+Entidades públicas diferentes & 322 \\
+Formato predominante & PDF \\
+Idioma del corpus & Español \\
+Fuente de información & Portal SICOES \\
+Variables por documento & 20 \\
+Unidad de análisis & Documento Base de Contratación (DBC) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Tabla \ref{tab:corpus_general} resume las principales características del conjunto documental utilizado durante la investigación. El corpus está conformado por 1\,429 Documentos Base de Contratación provenientes de 322 entidades públicas diferentes, lo que proporciona una muestra representativa de procesos de contratación publicados en el portal SICOES. La diversidad de instituciones y documentos recopilados permite evaluar el comportamiento del sistema RAG sobre información correspondiente a distintos sectores de la administración pública boliviana.
+
+
+\section{Preparación de los datos}
+
+La fase de Preparación de los Datos de la metodología CRISP-DM comprende el conjunto de actividades orientadas a transformar la información recopilada en un formato adecuado para las etapas posteriores de modelado y evaluación. En proyectos basados en Procesamiento del Lenguaje Natural, esta fase adquiere especial relevancia debido a que la calidad de las representaciones vectoriales y de los mecanismos de recuperación depende directamente de la calidad del texto utilizado como entrada.
+
+En la presente investigación, los Documentos Base de Contratación obtenidos desde el portal SICOES se encontraban en diferentes formatos documentales, principalmente PDF, DOC y DOCX, los cuales contenían elementos propios de documentos administrativos, tales como encabezados, pies de página, tablas, numeración automática y caracteres especiales. Antes de construir el sistema de recuperación semántica fue necesario aplicar un proceso de extracción, limpieza, normalización y enriquecimiento del contenido textual.
+
+Asimismo, durante esta fase se definieron las estrategias de fragmentación documental, generación de representaciones vectoriales y construcción del corpus utilizado por el sistema Retrieval-Augmented Generation (RAG). Estas actividades permitieron obtener un conjunto documental consistente, estructurado y adecuado para las tareas de indexación y recuperación semántica desarrolladas en las siguientes etapas del proyecto.
+
+Las subsecciones siguientes describen cada una de las actividades realizadas durante la preparación de los datos, siguiendo el orden en que fueron implementadas dentro del flujo de procesamiento.
+
+\subsection{Extracción del contenido textual}
+
+La primera actividad realizada durante la preparación de los datos consistió en extraer el contenido textual de los Documentos Base de Contratación obtenidos desde el portal SICOES. Debido a que los documentos se encontraban distribuidos en diferentes formatos digitales, fue necesario utilizar mecanismos de lectura compatibles con archivos PDF, DOC y DOCX, preservando la mayor cantidad posible de información textual.
+
+Durante esta etapa se recuperó el contenido principal de cada documento, eliminando las diferencias propias de los formatos de almacenamiento y unificando la información dentro de una representación textual común. El resultado obtenido permitió disponer de un conjunto homogéneo de documentos sobre el cual posteriormente se aplicaron técnicas de limpieza y procesamiento del lenguaje natural.
+
+Además del texto principal, también se conservaron metadatos relevantes asociados a cada convocatoria, tales como el identificador del proceso, entidad convocante, objeto de contratación y demás atributos disponibles durante la etapa de recopilación. Esta información permitió mantener la trazabilidad entre los documentos originales y el corpus utilizado durante los experimentos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/3_3_1_extraccion_contenido_textual.png}
+    \caption{Proceso de extracción y normalización del contenido textual.}
+    \caption*{\textbf{Fuente:} Elaboración propia.}
+    \label{fig:extraccion_textual}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:extraccion_textual}, la preparación del corpus documental comprende una secuencia de transformaciones orientadas a obtener un conjunto de datos consistente para su posterior indexación semántica. El proceso inicia con el corpus documental extraído del portal SICOES y continúa con la eliminación de etiquetas HTML, la normalización del contenido textual, la estandarización de fechas, la eliminación de registros duplicados mediante el identificador único CUCE y la construcción del campo \texttt{texto\_rag}, que integra la información textual relevante de cada Documento Base de Contratación. Finalmente, el corpus limpio es almacenado en formatos Parquet y CSV para las etapas posteriores de generación de embeddings y almacenamiento vectorial.
+
+\subsection{Limpieza y normalización}
+
+Una vez obtenido el contenido textual de los documentos, se aplicó un proceso de limpieza y normalización con el propósito de reducir el ruido presente en el corpus y facilitar las etapas posteriores de recuperación semántica. Los Documentos Base de Contratación contienen diferentes elementos de formato que, aunque resultan útiles para la presentación del documento original, no aportan información significativa para el proceso de búsqueda.
+
+Entre las principales actividades realizadas se encuentran la eliminación de espacios innecesarios, normalización de saltos de línea, corrección de caracteres especiales, unificación de codificaciones y depuración de elementos repetitivos presentes en encabezados y pies de página. Asimismo, se revisó la consistencia del contenido textual para evitar la incorporación de fragmentos incompletos o información duplicada.
+
+Este proceso permitió obtener documentos más uniformes y redujo la presencia de ruido documental que podría afectar negativamente tanto la generación de embeddings como la recuperación semántica basada en similitud vectorial.
+
+\begin{table}[H]
+\centering
+\caption{Transformaciones aplicadas durante la preparación del corpus documental.}
+\label{tab:transformaciones_corpus}
+
+\begin{tabular}{p{6cm}p{8cm}}
+\toprule
+\textbf{Transformación} & \textbf{Propósito} \\
+\midrule
+Eliminación de etiquetas HTML &
+Remover elementos de marcado y conservar únicamente el contenido textual relevante. \\
+
+Decodificación de entidades HTML &
+Convertir caracteres codificados a su representación textual estándar. \\
+
+Normalización de espacios y saltos de línea &
+Obtener una representación textual uniforme para facilitar el procesamiento posterior. \\
+
+Estandarización de fechas &
+Convertir las fechas al formato ISO para mantener consistencia en el corpus. \\
+
+Eliminación de registros duplicados (CUCE) &
+Garantizar la unicidad de cada proceso de contratación. \\
+
+Construcción del campo \texttt{texto\_rag} &
+Integrar el contenido textual y los metadatos relevantes en un único campo destinado a la recuperación semántica. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/3_3_2_limpieza_normalizacion.png}
+    \caption{Proceso de limpieza y normalización aplicado a los Documentos Base de Contratación antes de la construcción del corpus documental.}
+    \caption*{\textbf{Fuente:} Elaboración propia.}
+    \label{fig:limpieza_normalizacion}
+\end{figure}
+Como se aprecia en la Figura \ref{fig:limpieza_normalizacion}, el contenido textual extraído de los Documentos Base de Contratación requiere un proceso de limpieza y normalización antes de ser utilizado por el sistema de recuperación semántica. Estas transformaciones permiten eliminar información redundante, reducir el ruido documental y obtener un corpus consistente que mejora la calidad de las representaciones vectoriales generadas en las etapas posteriores.
+
+\subsection{Construcción del campo \texttt{texto\_rag}}
+
+Con el propósito de optimizar la recuperación semántica, se construyó un campo documental denominado \texttt{texto\_rag}, el cual concentra la información considerada más relevante para las tareas de búsqueda y generación de respuestas.
+
+En lugar de utilizar únicamente el contenido bruto extraído desde los documentos originales, este campo integra diferentes elementos textuales y metadatos seleccionados durante el proceso de preparación del corpus. Esta estrategia permite proporcionar al modelo de embeddings una representación documental más consistente y orientada a la recuperación de información.
+
+La construcción de un campo unificado facilita además la reproducibilidad del proceso experimental, ya que todos los documentos son representados mediante una estructura homogénea antes de generar sus correspondientes representaciones vectoriales.
+
+\begin{lstlisting}[language=Python,caption={Construcción conceptual del campo texto\_rag.},label={lst:texto_rag}]
+texto_rag = (
+    titulo +
+    objeto +
+    descripcion +
+    especificaciones +
+    requisitos
+)
+\end{lstlisting}
+
+\subsection{Enriquecimiento documental}
+
+Una vez obtenido un corpus documental limpio y normalizado, se implementó un proceso de enriquecimiento con el propósito de incrementar la calidad de la información utilizada durante la recuperación semántica. El objetivo de esta etapa fue construir una representación documental más informativa que permitiera mejorar la capacidad del sistema para responder consultas expresadas en lenguaje natural.
+
+El enriquecimiento documental consistió en integrar, dentro de una misma representación textual, información proveniente tanto del contenido principal del Documento Base de Contratación como de metadatos asociados al proceso de contratación. Entre estos elementos se incluyen el objeto de contratación, la entidad convocante, la modalidad de contratación, el código del proceso y otros atributos relevantes que complementan el contenido técnico del documento.
+
+La incorporación de esta información adicional permite que el modelo de embeddings genere representaciones vectoriales más completas, ya que la descripción del documento no depende exclusivamente del texto extraído, sino también del contexto administrativo que caracteriza cada proceso de contratación.
+
+Durante el desarrollo de la investigación se construyeron diferentes variantes del corpus documental con el propósito de analizar el impacto que tiene el enriquecimiento de la información sobre la recuperación semántica y la generación de respuestas mediante arquitecturas Retrieval-Augmented Generation. Esta estrategia permitió comparar distintas representaciones del mismo conjunto documental bajo condiciones experimentales controladas.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{figures/evolucion_corpus_documental.png}
+    \caption{Evolución del corpus documental a través de las variantes utilizadas en la investigación.}
+    \caption*{\textbf{Fuente:} Elaboración propia.}
+    \label{fig:evolucion_corpus}
+\end{figure}
+
+\begin{lstlisting}[language=Python,
+caption={Construcción conceptual del corpus enriquecido.},
+label={lst:enriched}]
+texto_rag = f"""
+Titulo: {titulo}
+Entidad: {entidad}
+Objeto: {objeto}
+Descripcion:
+{texto_limpio}
+"""
+\end{lstlisting}
+El corpus enriquecido constituye la base sobre la cual se aplican posteriormente las estrategias de fragmentación documental. Debido a que los modelos de lenguaje presentan limitaciones en la cantidad de información que pueden procesar simultáneamente, resulta necesario dividir los documentos en unidades de menor tamaño antes de generar sus correspondientes representaciones vectoriales. Este proceso se describe en la siguiente subsección.
+
+\subsection{Fragmentación documental orientada al dominio}
+
+Una vez construido el corpus enriquecido, se implementó una estrategia de fragmentación documental orientada al dominio de las contrataciones públicas. A diferencia de un proceso de fragmentación basado únicamente en la longitud del texto, la estrategia adoptada buscó preservar unidades de información con significado funcional dentro de los Documentos Base de Contratación (DBC), permitiendo que cada fragmento representara una sección coherente desde el punto de vista administrativo y técnico.
+
+Los DBC presentan una estructura relativamente consistente entre diferentes procesos de contratación, incluyendo apartados como objeto de la contratación, especificaciones técnicas, requisitos para los proponentes, criterios de evaluación, cronogramas, garantías y formularios. Sin embargo, no todas estas secciones poseen la misma relevancia para responder consultas realizadas por los usuarios. En consecuencia, durante la preparación del corpus se priorizó la incorporación de aquellos bloques documentales que contienen información directamente relacionada con la toma de decisiones de los proveedores.
+
+Esta estrategia permitió construir un corpus denominado \textit{Focused Corpus}, conformado por fragmentos documentales con alta densidad de información relevante para la recuperación semántica. En lugar de indexar indiscriminadamente todo el contenido del documento, se privilegiaron aquellas secciones que aportan contexto útil para responder preguntas relacionadas con requisitos técnicos, condiciones de participación, documentación exigida y características del proceso de contratación.
+
+Además de mejorar la calidad del contexto utilizado durante la recuperación, esta aproximación contribuyó a reducir la presencia de información repetitiva o de bajo valor semántico, como encabezados institucionales, numeraciones automáticas, índices, tablas de contenido y otros elementos propios del formato administrativo de los documentos.
+
+Cada fragmento generado conservó la referencia al documento original mediante identificadores y metadatos asociados al proceso de contratación. Esta decisión permitió mantener la trazabilidad entre las respuestas generadas por el sistema y la fuente documental correspondiente, facilitando posteriormente la validación de los resultados obtenidos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.90\textwidth]{figures/chunking_pipeline.png}
+    \caption{Proceso de fragmentación documental aplicado al corpus utilizado en la investigación.}
+    \label{fig:chunking_pipeline}
+\end{figure}
+Como se observa en la Figura \ref{fig:chunking_pipeline}, cada Documento Base de Contratación es dividido en múltiples fragmentos que conservan su relación con el documento original. Posteriormente, cada fragmento es procesado de forma independiente durante la generación de embeddings, permitiendo que la recuperación semántica opere sobre unidades documentales más específicas y con mayor precisión.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.92\textwidth]{figures/focused_corpus_pipeline.png}
+    \caption{Construcción del corpus orientado al dominio a partir de los Documentos Base de Contratación.}
+    \label{fig:focused_corpus}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:focused_corpus}, la preparación del corpus no consistió únicamente en dividir los documentos originales en fragmentos de menor tamaño, sino en seleccionar aquellas secciones que aportan mayor valor para la recuperación de información dentro del dominio de las contrataciones públicas. Esta estrategia permitió construir un corpus especializado sobre el cual posteriormente se generaron los embeddings utilizados por el sistema RAG.
+
+\begin{table}[H]
+\centering
+\caption{Configuración utilizada durante el proceso de fragmentación documental.}
+\label{tab:chunking}
+
+\begin{tabular}{ll}
+\hline
+\textbf{Parámetro} & \textbf{Valor}\\
+\hline
+Método de fragmentación & XXX\\
+Tamaño del fragmento & XXX\\
+Solapamiento (\textit{overlap}) & XXX\\
+Unidad de segmentación & XXX\\
+Cantidad total de fragmentos & XXX\\
+\hline
+\end{tabular}
+
+\end{table}
+
+\TODO{revisar tabla}
+
+\begin{lstlisting}[language=Python,
+caption={Fragmentación conceptual del corpus documental.},
+label={lst:chunking}]
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=CHUNK_SIZE,
+    chunk_overlap=CHUNK_OVERLAP
+)
+
+chunks = splitter.split_text(texto_rag)
+\end{lstlisting}
+\TODO{ revisar codigo}
+Los fragmentos obtenidos durante esta etapa constituyen las unidades documentales utilizadas por el sistema de recuperación semántica. Cada uno de ellos es transformado posteriormente en una representación vectorial mediante un modelo de embeddings, proceso que permite construir la base vectorial empleada por el sistema Retrieval-Augmented Generation desarrollado en esta investigación.
+
+
+\subsection{Generación de embeddings}
+
+Una vez construido el corpus documental orientado al dominio, cada uno de los fragmentos fue transformado en una representación vectorial mediante un modelo de \textit{embeddings}. Esta etapa constituye el puente entre el procesamiento documental y la recuperación semántica, ya que permite convertir información textual en vectores numéricos que preservan relaciones de significado y pueden compararse mediante métricas de similitud.
+
+Para la generación de los embeddings se empleó el modelo \texttt{paraphrase-multilingual-MiniLM-L12-v2}, perteneciente a la biblioteca Sentence Transformers. La selección de este modelo respondió principalmente a tres criterios: su capacidad para representar documentos en idioma español, su tamaño reducido en comparación con modelos de mayor complejidad y su buen desempeño en tareas de recuperación semántica multilingüe.
+
+Cada fragmento del corpus fue procesado de forma individual, obteniendo un vector numérico de dimensión fija que posteriormente fue almacenado junto con sus metadatos dentro de la base de datos vectorial. Este procedimiento permitió que tanto los documentos como las consultas realizadas por los usuarios compartieran el mismo espacio vectorial, haciendo posible calcular similitudes semánticas durante la etapa de recuperación.
+
+Con el propósito de garantizar la reproducibilidad de los experimentos, la generación de embeddings se realizó una única vez durante el proceso de construcción del corpus. De esta manera, las diferentes estrategias de recuperación evaluadas utilizaron exactamente las mismas representaciones vectoriales, evitando introducir variaciones derivadas del proceso de vectorización.
+
+
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.88\textwidth]{figures/embedding_generation_pipeline.png}
+    \caption{Proceso de generación de embeddings a partir del corpus documental.}
+    \label{fig:embedding_generation}
+\end{figure}
+Como se muestra en la Figura \ref{fig:embedding_generation}, cada fragmento documental es procesado por el modelo de embeddings para obtener una representación vectorial de dimensión fija. Estas representaciones constituyen la base sobre la cual opera el mecanismo de recuperación semántica implementado en la presente investigación.
+
+\begin{table}[H]
+\centering
+\caption{Configuración del modelo de embeddings utilizado en la investigación.}
+\label{tab:embedding_model}
+
+\begin{tabular}{ll}
+\hline
+\textbf{Parámetro} & \textbf{Valor}\\
+\hline
+Modelo & paraphrase-multilingual-MiniLM-L12-v2\\
+Biblioteca & Sentence Transformers\\
+Idioma & Multilingüe\\
+Tipo de representación & Embeddings densos\\
+Dimensión del vector & 384\\
+Uso principal & Recuperación semántica\\
+\hline
+\end{tabular}
+
+\end{table}
+
+\begin{lstlisting}[
+language=Python,
+caption={Generación de embeddings mediante Sentence Transformers.},
+label={lst:embeddings}
+]
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer(
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+embedding = model.encode(texto_rag)
+\end{lstlisting}
+
+Las representaciones vectoriales obtenidas durante esta etapa constituyen la unidad fundamental del sistema de recuperación semántica. Sin embargo, para permitir consultas eficientes sobre miles de fragmentos documentales, resulta necesario almacenarlas en una estructura especializada capaz de soportar búsquedas por similitud. Por esta razón, la siguiente subsección describe el diseño e implementación de la base de datos vectorial basada en PostgreSQL y la extensión \texttt{pgvector}.
+
+
+\subsection{Construcción de la base vectorial PostgreSQL + pgvector}
+
+Una vez generadas las representaciones vectoriales del corpus documental, se implementó una base de datos vectorial utilizando PostgreSQL junto con la extensión \texttt{pgvector}. Esta arquitectura permitió almacenar en un mismo sistema tanto la información estructurada de cada Documento Base de Contratación como sus correspondientes embeddings, simplificando la administración del repositorio documental y facilitando la integración con el mecanismo de recuperación semántica.
+
+Cada registro de la base de datos almacena el contenido textual del fragmento, los metadatos asociados al proceso de contratación y el vector numérico generado durante la etapa de embeddings. De esta manera, una consulta puede recuperar simultáneamente el contenido documental y la información descriptiva necesaria para construir posteriormente el contexto utilizado por el sistema RAG.
+
+La utilización de PostgreSQL con \texttt{pgvector} permitió mantener una arquitectura relativamente simple y completamente reproducible, evitando la incorporación de servicios externos especializados en bases vectoriales. Asimismo, esta decisión facilita futuras ampliaciones del sistema, ya que PostgreSQL continúa siendo responsable tanto de la persistencia de la información documental como de las consultas de similitud vectorial.
+
+Durante la implementación se creó una estructura de almacenamiento orientada a preservar la relación entre cada fragmento documental y el Documento Base de Contratación del cual fue obtenido. Esta organización permitió mantener la trazabilidad de los resultados recuperados y simplificó el proceso de validación desarrollado durante la etapa experimental.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.92\textwidth]{figures/postgres_pgvector_architecture.png}
+    \caption{Arquitectura de almacenamiento implementada mediante PostgreSQL y la extensión pgvector.}
+    \label{fig:postgres_pgvector}
+\end{figure}
+Como se observa en la Figura \ref{fig:postgres_pgvector}, PostgreSQL actúa como repositorio central del sistema, almacenando tanto el contenido documental como las representaciones vectoriales generadas durante la etapa anterior. Esta organización permite realizar consultas por similitud sin perder la relación entre cada embedding y el documento original del cual fue obtenido.
+
+\begin{table}[H]
+\centering
+\caption{Información almacenada para cada fragmento documental.}
+\label{tab:vector_schema}
+
+\begin{tabular}{lll}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción}\\
+\hline
+
+id & Integer & Identificador único\\
+
+document\_id & Text & Documento de origen\\
+
+texto\_rag & Text & Fragmento documental\\
+
+metadata & JSON & Información adicional\\
+
+embedding & Vector(384) & Representación semántica\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+\begin{lstlisting}[
+language=SQL,
+caption={Creación conceptual de una tabla con soporte para embeddings.},
+label={lst:pgvector}
+]
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE documentos (
+    id SERIAL PRIMARY KEY,
+    texto_rag TEXT,
+    metadata JSONB,
+    embedding VECTOR(384)
+);
+\end{lstlisting}
+
+\begin{lstlisting}[
+language=Python,
+caption={Almacenamiento conceptual de embeddings en PostgreSQL.},
+label={lst:insert_embedding}
+]
+cursor.execute(
+    """
+    INSERT INTO documentos
+    (texto_rag, embedding)
+    VALUES (%s, %s)
+    """,
+    (texto_rag, embedding.tolist())
+)
+\end{lstlisting}
+
+La fase de Preparación de los Datos concluye con la construcción de un repositorio documental compuesto por fragmentos especializados del dominio SICOES, enriquecidos mediante metadatos y representados como embeddings almacenados en una base vectorial. Este repositorio constituye la entrada principal para la fase de Modelado, donde se implementan los mecanismos de recuperación semántica y la arquitectura Retrieval-Augmented Generation desarrollados en la presente investigación.
+
+
+\section{Modelado}
+
+La fase de Modelado de la metodología CRISP-DM comprende el diseño, implementación y configuración de los modelos que permiten resolver el problema planteado durante la fase de Comprensión del Negocio. En el contexto de la presente investigación, esta etapa no se limita a la construcción de un único modelo de inteligencia artificial, sino que integra diferentes componentes especializados que trabajan de forma coordinada para recuperar información relevante y generar respuestas fundamentadas sobre los Documentos Base de Contratación.
+
+La arquitectura desarrollada combina técnicas de recuperación semántica, bases de datos vectoriales y modelos de lenguaje de gran tamaño mediante un enfoque Retrieval-Augmented Generation (RAG). Esta integración permite que las respuestas generadas no dependan exclusivamente del conocimiento interno del modelo de lenguaje, sino que se construyan utilizando evidencia recuperada desde el corpus documental preparado durante las etapas anteriores.
+
+A diferencia de arquitecturas conversacionales tradicionales, el sistema implementado prioriza la recuperación de información antes de iniciar la generación de texto. Esta decisión reduce la probabilidad de generar respuestas sin respaldo documental y permite mantener la trazabilidad entre cada respuesta producida y los fragmentos recuperados desde la base vectorial.
+
+Las siguientes subsecciones describen la arquitectura general del sistema, el mecanismo de recuperación implementado, la integración mediante LangChain y el desarrollo del prototipo utilizado para la evaluación experimental.
+
+\subsection{Arquitectura general del sistema}
+
+La arquitectura propuesta fue diseñada siguiendo una estrategia modular que separa claramente las etapas de preparación documental, recuperación de información y generación de respuestas. Esta organización facilita la reproducibilidad de los experimentos, simplifica la incorporación de nuevas fuentes documentales y permite sustituir componentes individuales sin afectar el funcionamiento general del sistema.
+
+Durante la fase de preparación, los Documentos Base de Contratación son extraídos, procesados y transformados en representaciones vectoriales almacenadas dentro de PostgreSQL mediante la extensión \texttt{pgvector}. Posteriormente, durante la fase de consulta, cada pregunta realizada por el usuario es convertida en un embedding utilizando el mismo modelo empleado para indexar el corpus. A partir de esta representación vectorial se recuperan los fragmentos documentales más similares, los cuales son utilizados como contexto para el modelo generativo.
+
+Finalmente, el modelo de lenguaje recibe simultáneamente la consulta del usuario y el contexto recuperado, generando una respuesta fundamentada en información proveniente directamente del corpus documental. Este flujo constituye la base de la arquitectura Retrieval-Augmented Generation implementada en la presente investigación.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.95\textwidth]{figures/system_architecture.png}
+    \caption{Arquitectura general del sistema desarrollado.}
+    \label{fig:system_architecture}
+\end{figure}
+Como se observa en la Figura \ref{fig:system_architecture}, el sistema se encuentra dividido en dos grandes componentes. El primero corresponde al proceso de construcción e indexación del corpus documental, mientras que el segundo implementa el flujo de consulta, recuperación semántica y generación aumentada mediante modelos de lenguaje. Esta separación permitió evaluar independientemente las estrategias de recuperación y reutilizar la misma base documental durante todos los experimentos realizados.
+
+\begin{table}[H]
+\centering
+\caption{Componentes principales de la arquitectura propuesta.}
+\label{tab:architecture}
+
+\begin{tabular}{p{4cm}p{9cm}}
+\hline
+\textbf{Componente} & \textbf{Función}\\
+\hline
+
+Corpus documental &
+Almacena los fragmentos especializados del dominio SICOES.\\
+
+Sentence Transformers &
+Genera los embeddings de documentos y consultas.\\
+
+PostgreSQL + pgvector &
+Almacena los embeddings y ejecuta consultas por similitud.\\
+
+Retriever &
+Recupera los fragmentos más relevantes para cada consulta.\\
+
+LLM &
+Genera respuestas fundamentadas utilizando el contexto recuperado.\\
+
+Streamlit &
+Interfaz de interacción con el usuario.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+La arquitectura implementada constituye la base sobre la cual se desarrollan las diferentes estrategias de recuperación evaluadas en esta investigación. Una vez definido el flujo general del sistema, resulta necesario describir con mayor detalle el mecanismo encargado de recuperar los fragmentos documentales más relevantes antes de iniciar la generación de respuestas. Este componente se presenta en la siguiente subsección.
+
+
+\subsection{Integración mediante LangChain}
+
+Con el propósito de facilitar la integración entre los diferentes componentes del sistema, se empleó el framework LangChain como capa de orquestación entre la recuperación documental y el modelo generativo. Esta decisión permitió desacoplar las distintas etapas del flujo de procesamiento, facilitando la reutilización de componentes y la incorporación de nuevas estrategias de recuperación sin modificar la lógica principal de la aplicación.
+
+Dentro de la arquitectura implementada, LangChain actúa como intermediario entre la consulta realizada por el usuario, el mecanismo de recuperación semántica y el modelo de lenguaje. Cada consulta es procesada inicialmente para obtener su representación vectorial, posteriormente se ejecuta la búsqueda sobre la base vectorial y finalmente los documentos recuperados son incorporados al contexto enviado al modelo generativo.
+
+La utilización de LangChain también permitió estructurar el flujo de procesamiento mediante componentes independientes, favoreciendo la mantenibilidad del código y la reproducibilidad de los experimentos desarrollados durante la investigación. Esta organización facilitó la comparación de diferentes estrategias de recuperación empleando exactamente la misma arquitectura de generación de respuestas.
+
+Asimismo, el uso de un framework especializado permitió mantener una separación clara entre la lógica correspondiente al procesamiento documental, la recuperación de información y la interacción con el modelo de lenguaje, simplificando el desarrollo del prototipo y reduciendo el acoplamiento entre los distintos módulos del sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.92\textwidth]{figures/langchain_architecture.png}
+    \caption{Integración de LangChain dentro de la arquitectura desarrollada.}
+    \label{fig:langchain_architecture}
+\end{figure}
+Como se observa en la Figura \ref{fig:langchain_architecture}, LangChain coordina la interacción entre la consulta realizada por el usuario, el mecanismo de recuperación documental y el modelo de lenguaje. Esta capa de integración permite construir dinámicamente el contexto utilizado durante la generación de respuestas sin modificar los componentes individuales del sistema.
+
+\begin{table}[H]
+\centering
+\caption{Principales componentes implementados mediante LangChain.}
+\label{tab:langchain_components}
+
+\begin{tabular}{p{4cm}p{9cm}}
+\hline
+\textbf{Componente} & \textbf{Función}\\
+\hline
+
+PromptTemplate &
+Construcción del prompt enviado al modelo generativo.\\
+
+Retriever &
+Recuperación de documentos relevantes desde PostgreSQL + pgvector.\\
+
+Embeddings &
+Vectorización de consultas del usuario.\\
+
+LLM &
+Generación de respuestas fundamentadas.\\
+
+Output Parser &
+Procesamiento de la respuesta generada antes de presentarla al usuario.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+\begin{lstlisting}[
+language=Python,
+caption={Construcción conceptual de una cadena RAG mediante LangChain.},
+label={lst:langchain_chain}
+]
+retriever = vector_store.as_retriever()
+
+chain = (
+    retriever
+    | prompt
+    | llm
+)
+\end{lstlisting}
+
+La incorporación de LangChain permitió estructurar la arquitectura del sistema de manera modular, facilitando la integración entre la recuperación documental y el modelo generativo. Sobre esta infraestructura se implementó posteriormente el mecanismo de recuperación semántica, el cual constituye el componente responsable de seleccionar la evidencia documental utilizada durante la generación de respuestas.
+
+\subsection{Implementación del mecanismo de recuperación}
+
+El mecanismo de recuperación constituye el componente responsable de localizar los fragmentos documentales más relevantes para responder una consulta realizada por el usuario. Dentro de la arquitectura desarrollada, este componente fue diseñado de forma modular con el propósito de permitir la evaluación de diferentes estrategias de recuperación manteniendo constante el resto del sistema, incluyendo el corpus documental, el modelo de embeddings y el modelo generativo utilizado durante las pruebas.
+
+El proceso de recuperación inicia cuando el usuario formula una consulta en lenguaje natural mediante la interfaz del sistema. Posteriormente, la consulta es procesada de acuerdo con la estrategia de recuperación seleccionada. En todos los casos, el objetivo consiste en obtener un conjunto ordenado de fragmentos documentales relevantes que posteriormente serán utilizados durante la construcción del contexto enviado al modelo de lenguaje.
+
+Con el propósito de realizar una comparación objetiva entre diferentes enfoques de recuperación de información, la arquitectura fue diseñada para soportar múltiples estrategias intercambiables. De esta manera, el componente de recuperación puede operar utilizando búsquedas tradicionales basadas en coincidencia textual, búsquedas semánticas mediante embeddings o estrategias híbridas que combinan ambas aproximaciones.
+
+Esta arquitectura modular permitió que todos los experimentos desarrollados durante la investigación utilizaran exactamente el mismo corpus documental, la misma base vectorial y el mismo modelo generativo. En consecuencia, las diferencias observadas durante la evaluación corresponden exclusivamente al mecanismo de recuperación empleado y no a modificaciones introducidas en otras etapas del sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.90\textwidth]{figures/retrieval_strategy_architecture.png}
+    \caption{Arquitectura modular del mecanismo de recuperación implementado.}
+    \label{fig:retrieval_architecture}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:retrieval_architecture}, el sistema permite seleccionar diferentes estrategias de recuperación sin modificar el resto de la arquitectura. Esta organización facilita la comparación experimental entre búsquedas keyword, recuperación semántica y estrategias híbridas, manteniendo constantes todos los demás componentes del sistema.
+
+\begin{table}[H]
+\centering
+\caption{Estrategias de recuperación implementadas durante la investigación.}
+\label{tab:retrieval_methods}
+
+\begin{tabular}{p{3cm}p{4cm}p{6cm}}
+\hline
+\textbf{Método} & \textbf{Representación} & \textbf{Descripción}\\
+\hline
+
+Keyword &
+Texto &
+Recuperación basada en coincidencias textuales utilizando términos presentes en los documentos.\\
+
+Semántico &
+Embeddings &
+Recuperación mediante similitud vectorial calculada sobre representaciones densas.\\
+
+Híbrido &
+Texto + Embeddings &
+Combinación de recuperación léxica y recuperación semántica dentro del mismo proceso de consulta.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+\begin{lstlisting}[
+language=Python,
+caption={Consulta conceptual sobre la base vectorial.},
+label={lst:retrieval}
+]
+query_embedding = model.encode(query)
+
+results = vector_store.similarity_search(
+    query_embedding,
+    k=TOP_K
+)
+\end{lstlisting}
+Los fragmentos recuperados durante esta etapa representan la evidencia documental que fundamenta las respuestas generadas por el sistema. Sin embargo, la recuperación por sí sola no constituye el resultado final de la investigación. Los documentos seleccionados deben integrarse adecuadamente dentro del contexto enviado al modelo de lenguaje para producir respuestas coherentes, completas y sustentadas en información proveniente del corpus documental. Este proceso se describe en la siguiente subsección.
+
+\subsubsection{Recuperación basada en palabras clave}
+
+La estrategia keyword realiza la recuperación utilizando coincidencias textuales entre la consulta del usuario y el contenido del corpus documental. Este enfoque constituye la línea base utilizada durante la investigación, permitiendo comparar posteriormente el comportamiento de las estrategias semánticas y de recuperación híbrida.
+
+La recuperación léxica presenta un buen desempeño cuando las consultas contienen términos técnicos, códigos específicos o expresiones presentes explícitamente en los Documentos Base de Contratación. Sin embargo, puede presentar limitaciones cuando diferentes entidades utilizan terminología distinta para describir requisitos equivalentes.
+
+\subsubsection{Recuperación semántica}
+
+La recuperación semántica transforma inicialmente la consulta del usuario en un embedding utilizando el mismo modelo empleado durante la construcción del corpus documental. Posteriormente, la base vectorial ejecuta una búsqueda por similitud para identificar aquellos fragmentos cuya representación vectorial presenta mayor cercanía respecto a la consulta realizada.
+
+Esta estrategia permite recuperar documentos relacionados conceptualmente con la consulta aun cuando no exista coincidencia exacta entre las palabras utilizadas por el usuario y el contenido documental almacenado.
+
+
+\subsubsection{Recuperación híbrida}
+
+La estrategia híbrida combina información proveniente de la recuperación basada en palabras clave y de la recuperación semántica. Su propósito consiste en aprovechar simultáneamente la precisión de las coincidencias textuales y la capacidad de generalización proporcionada por los embeddings.
+
+Durante la investigación esta estrategia fue evaluada bajo las mismas condiciones experimentales que las demás alternativas, permitiendo analizar si la combinación de ambas fuentes de información aporta mejoras en la recuperación de documentos relevantes dentro del dominio SICOES.
+
+\begin{table}[H]
+\centering
+\caption{Estrategias de recuperación evaluadas durante la investigación.}
+\label{tab:retrieval_methods}
+
+\begin{tabular}{p{3cm}p{3cm}p{5cm}p{3cm}}
+\hline
+\textbf{Método} &
+\textbf{Representación} &
+\textbf{Fortaleza} &
+\textbf{Evaluado}\\
+\hline
+
+Keyword &
+Texto &
+Alta precisión en términos específicos &
+Sí\\
+
+Semántico &
+Embeddings &
+Recuperación basada en significado &
+Sí\\
+
+Híbrido &
+Texto + Embeddings &
+Combina evidencia léxica y semántica &
+Sí\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+La arquitectura modular implementada permitió comparar diferentes estrategias de recuperación utilizando exactamente el mismo corpus documental y las mismas consultas experimentales. Una vez recuperados los fragmentos más relevantes, estos son incorporados al contexto utilizado por el modelo de lenguaje durante la generación de respuestas. Este proceso corresponde a la arquitectura Retrieval-Augmented Generation, descrita en la siguiente subsección.
+
+\subsection{Diseño e implementación del sistema Retrieval-Augmented Generation (RAG)}
+
+Una vez recuperados los fragmentos documentales más relevantes, el siguiente paso consiste en incorporarlos al proceso de generación de respuestas. Para ello se implementó una arquitectura Retrieval-Augmented Generation (RAG), cuyo propósito es complementar las capacidades del modelo de lenguaje mediante información recuperada directamente desde el corpus documental construido durante las fases anteriores.
+
+A diferencia de un modelo conversacional tradicional, donde la respuesta se genera únicamente a partir del conocimiento previamente aprendido durante el entrenamiento del modelo, la arquitectura desarrollada incorpora evidencia documental obtenida dinámicamente desde los Documentos Base de Contratación. Esta estrategia permite fundamentar las respuestas utilizando información específica del dominio SICOES, reduciendo la probabilidad de generar contenido no respaldado por la documentación disponible.
+
+El sistema desarrollado mantiene una separación clara entre las etapas de recuperación y generación. Inicialmente se ejecuta el mecanismo de recuperación descrito en la subsección anterior, obteniendo un conjunto de fragmentos relevantes para la consulta realizada por el usuario. Posteriormente, dichos fragmentos son organizados y utilizados como contexto para construir el prompt enviado al modelo generativo.
+
+Esta arquitectura permite que el modelo de lenguaje concentre su capacidad de razonamiento sobre información previamente recuperada del corpus documental, en lugar de depender exclusivamente de su conocimiento interno. Como consecuencia, las respuestas generadas conservan una relación directa con los Documentos Base de Contratación y pueden ser posteriormente verificadas por el usuario utilizando la documentación original.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.94\textwidth]{figures/rag_complete_pipeline.png}
+    \caption{Arquitectura Retrieval-Augmented Generation implementada en la investigación.}
+    \label{fig:rag_complete}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:rag_complete}, la generación de respuestas constituye la última etapa del flujo de procesamiento. Antes de consultar el modelo de lenguaje, el sistema recupera información relevante desde la base vectorial y construye un contexto especializado que sirve como fundamento para la respuesta generada.
+
+\subsubsection{Construcción del contexto}
+
+El contexto enviado al modelo de lenguaje se construye utilizando los fragmentos recuperados durante la etapa de búsqueda semántica. En lugar de enviar el Documento Base de Contratación completo, el sistema selecciona únicamente aquellos fragmentos considerados más relevantes para responder la consulta realizada por el usuario.
+
+Cada fragmento conserva información suficiente para mantener el significado del contenido original y preservar la relación con el documento fuente. Posteriormente, los diferentes fragmentos recuperados son concatenados respetando el orden definido por el mecanismo de recuperación, formando así el contexto documental utilizado durante la generación de respuestas.
+
+Esta estrategia permite reducir la cantidad de información procesada por el modelo generativo y concentrar el razonamiento sobre evidencia directamente relacionada con la consulta del usuario.
+
+\subsubsection{Construcción del prompt}
+
+Una vez construido el contexto documental, el sistema genera dinámicamente el prompt que será enviado al modelo de lenguaje. Este prompt integra la consulta realizada por el usuario junto con los fragmentos recuperados desde la base vectorial, estableciendo además instrucciones que orientan al modelo para responder únicamente utilizando la información disponible en el contexto proporcionado.
+
+La utilización de un prompt estructurado permite reducir la probabilidad de incorporar información ajena al corpus documental y favorece la generación de respuestas consistentes con el contenido de los Documentos Base de Contratación.
+
+\begin{lstlisting}[
+language=Python,
+caption={Construcción conceptual del prompt utilizado por el sistema RAG.},
+label={lst:prompt}
+]
+prompt = f"""
+Contexto:
+
+{contexto}
+
+Pregunta:
+
+{consulta}
+
+Responde unicamente utilizando
+la informacion proporcionada.
+"""
+\end{lstlisting}
+
+\subsubsection{Generación de la respuesta}
+
+Finalmente, el prompt enriquecido es enviado al modelo de lenguaje, el cual analiza la consulta del usuario utilizando como referencia el contexto documental recuperado. La respuesta generada constituye el resultado final presentado por el sistema.
+
+Debido a que la generación se encuentra condicionada por la información recuperada previamente, las respuestas mantienen una relación directa con el contenido documental utilizado como evidencia. Esta característica diferencia al sistema desarrollado de un modelo conversacional convencional y constituye uno de los principios fundamentales de las arquitecturas Retrieval-Augmented Generation.
+
+\begin{table}[H]
+\centering
+\caption{Componentes del pipeline Retrieval-Augmented Generation implementado.}
+\label{tab:rag_pipeline}
+
+\begin{tabular}{p{4cm}p{9cm}}
+\hline
+\textbf{Componente} & \textbf{Función}\\
+\hline
+
+Consulta &
+Pregunta realizada por el usuario.\\
+
+Retriever &
+Obtención de fragmentos relevantes.\\
+
+Contexto &
+Integración de la evidencia documental.\\
+
+Prompt &
+Instrucciones enviadas al modelo.\\
+
+Modelo generativo &
+Generación de la respuesta.\\
+
+Respuesta &
+Información presentada al usuario.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+La implementación del sistema Retrieval-Augmented Generation permitió integrar las capacidades de recuperación semántica desarrolladas durante las fases anteriores con un modelo de lenguaje de gran tamaño, obteniendo respuestas fundamentadas en evidencia documental proveniente del corpus SICOES. Sin embargo, para que esta arquitectura pudiera ser utilizada por usuarios finales, fue necesario desarrollar una aplicación que integrara todos los componentes descritos anteriormente. La implementación del prototipo desarrollado se presenta en la siguiente subsección.
+
+\subsection{Implementación de la aplicación}
+
+Con el propósito de validar experimentalmente la arquitectura desarrollada, se implementó una aplicación interactiva que integra todos los componentes descritos durante las etapas anteriores. La aplicación constituye el punto de interacción entre el usuario y el sistema de recuperación documental, permitiendo realizar consultas en lenguaje natural y obtener respuestas fundamentadas sobre el contenido de los Documentos Base de Contratación almacenados en la base vectorial.
+
+La implementación fue desarrollada utilizando Python como lenguaje principal y Streamlit como framework para la construcción de la interfaz gráfica. Esta elección permitió desarrollar una aplicación ligera, fácilmente reproducible y adecuada para la validación de arquitecturas basadas en modelos de lenguaje y recuperación semántica.
+
+Desde el punto de vista funcional, la aplicación integra en una única interfaz la captura de consultas, la ejecución del mecanismo de recuperación, la construcción del contexto documental y la generación de respuestas mediante el modelo de lenguaje. Como resultado, el usuario interactúa con un único sistema, mientras que internamente se ejecutan las diferentes etapas descritas durante la fase de modelado.
+
+La arquitectura modular implementada permitió desacoplar los componentes responsables de la recuperación documental, la generación de embeddings, la comunicación con PostgreSQL y la interacción con el modelo generativo. Esta organización facilitó la incorporación de nuevas estrategias de recuperación y simplificó la ejecución de los experimentos desarrollados durante la investigación.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.95\textwidth]{figures/streamlit_interface.png}
+    \caption{Interfaz principal de la aplicación desarrollada para la consulta de Documentos Base de Contratación.}
+    \label{fig:streamlit}
+\end{figure}
+
+Como se observa en la Figura \ref{fig:streamlit}, la aplicación permite al usuario realizar consultas utilizando lenguaje natural. Internamente, la arquitectura ejecuta el mecanismo de recuperación semántica, construye el contexto documental y genera una respuesta fundamentada utilizando la información recuperada desde la base vectorial.
+
+\begin{table}[H]
+\centering
+\caption{Principales componentes de la aplicación desarrollada.}
+\label{tab:modules}
+
+\begin{tabular}{p{4cm}p{9cm}}
+\hline
+\textbf{Módulo} & \textbf{Responsabilidad}\\
+\hline
+
+Interfaz &
+Captura consultas y presenta resultados.\\
+
+Retriever &
+Obtiene los fragmentos relevantes desde PostgreSQL.\\
+
+Generador de contexto &
+Construye el prompt utilizado por el modelo.\\
+
+Modelo de lenguaje &
+Genera la respuesta final.\\
+
+Base vectorial &
+Almacena embeddings y documentos.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+\begin{lstlisting}[
+language=Python,
+caption={Inicialización conceptual de la aplicación.},
+label={lst:streamlit}
+]
+import streamlit as st
+
+query = st.text_input(
+    "Ingrese su consulta"
+)
+
+if query:
+
+    response = rag_chain.invoke(query)
+
+    st.write(response)
+\end{lstlisting}
+
+La implementación desarrollada permitió integrar en una única aplicación todas las etapas descritas durante la fase de modelado, desde la recuperación documental hasta la generación aumentada de respuestas. Gracias a esta integración fue posible ejecutar experimentos bajo condiciones controladas y evaluar objetivamente el comportamiento de las diferentes estrategias de recuperación implementadas. Los resultados obtenidos durante dichas evaluaciones se presentan en la siguiente sección.
 
 \section{Evaluación}
 
-La evaluación se centrará en tres modos de consulta:
+La fase de Evaluación de la metodología CRISP-DM tiene como propósito determinar si la solución desarrollada cumple los objetivos planteados durante la comprensión del problema de negocio y verificar el desempeño del sistema bajo condiciones controladas. En esta etapa se definió un procedimiento experimental reproducible que permitió evaluar objetivamente las diferentes estrategias de recuperación implementadas dentro de la arquitectura propuesta.
+
+A diferencia de una evaluación centrada únicamente en el modelo de lenguaje, la presente investigación considera que el desempeño de un sistema Retrieval-Augmented Generation depende en gran medida de la calidad del mecanismo de recuperación documental. Por esta razón, la evaluación se estructuró en dos niveles complementarios. El primero corresponde al análisis cuantitativo del mecanismo de recuperación mediante métricas propias del área de Recuperación de Información. El segundo consiste en una evaluación cualitativa de las respuestas generadas por el sistema RAG utilizando el contexto recuperado.
+
+Con el propósito de garantizar la reproducibilidad de los experimentos, todas las pruebas fueron realizadas utilizando el mismo corpus documental, la misma base vectorial, el mismo modelo de embeddings y la misma configuración del modelo generativo. Bajo estas condiciones, la única variable modificada durante los experimentos correspondió a la estrategia de recuperación utilizada en cada escenario de evaluación.
+
+\subsection{Diseño experimental}
+
+El diseño experimental fue elaborado con el objetivo de comparar el comportamiento de diferentes estrategias de recuperación documental dentro del dominio de los Documentos Base de Contratación del SICOES. Para ello se definió un conjunto de consultas representativas, construidas a partir de situaciones reales que enfrentan proveedores y empresas durante la revisión de procesos de contratación pública.
+
+Cada consulta fue ejecutada utilizando las distintas estrategias de recuperación implementadas en la investigación, manteniendo constantes el corpus documental, la configuración del sistema y el modelo generativo. Este enfoque permitió aislar el efecto producido por cada mecanismo de recuperación y realizar comparaciones objetivas entre los diferentes escenarios evaluados.
+
+Adicionalmente, se definieron procedimientos específicos para la evaluación cuantitativa y cualitativa, permitiendo analizar tanto la capacidad del sistema para recuperar documentos relevantes como la calidad de las respuestas generadas utilizando dichos documentos como contexto.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.90\textwidth]{figures/experimental_design.png}
+    \caption{Diseño experimental utilizado para la evaluación de las estrategias de recuperación.}
+    \label{fig:experimental_design}
+\end{figure}
+\begin{table}[H]
+\centering
+\caption{Variables controladas durante la evaluación experimental.}
+\label{tab:variables_control}
+
+\begin{tabular}{p{6cm}p{6cm}}
+\hline
+\textbf{Variable} & \textbf{Condición}\\
+\hline
+
+Corpus documental & Constante\\
+
+Modelo de embeddings & Constante\\
+
+Base vectorial & Constante\\
+
+Modelo generativo & Constante\\
+
+Consultas de prueba & Constantes\\
+
+Estrategia de recuperación & Variable experimental\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+
+\subsection{Evaluación cuantitativa}
+
+La evaluación cuantitativa tuvo como objetivo medir la capacidad de cada estrategia de recuperación para identificar correctamente los fragmentos documentales relevantes dentro del corpus utilizado durante la investigación.
+
+Para ello se emplearon métricas ampliamente utilizadas en Recuperación de Información, entre ellas Precision@k, Recall@k, Mean Reciprocal Rank (MRR) y Hit Rate@k. Estas métricas permiten analizar diferentes aspectos del proceso de recuperación, considerando tanto la relevancia de los documentos recuperados como la posición en la que aparecen dentro del ranking generado por el sistema.
+
+La utilización de estas métricas permitió comparar objetivamente el comportamiento de las estrategias keyword, semántica e híbrida bajo un mismo conjunto de consultas, proporcionando evidencia cuantitativa sobre el desempeño del mecanismo de recuperación.
+
+\begin{table}[H]
+\centering
+\caption{Métricas utilizadas durante la evaluación cuantitativa.}
+\label{tab:metrics}
+
+\begin{tabular}{p{4cm}p{8.5cm}}
+\hline
+\textbf{Métrica} & \textbf{Propósito}\\
+\hline
+
+Precision@k &
+Proporción de documentos relevantes recuperados entre los primeros resultados.\\
+
+Recall@k &
+Capacidad del sistema para recuperar documentos relevantes.\\
+
+MRR &
+Posición promedio del primer documento relevante recuperado.\\
+
+Hit Rate@k &
+Verifica si existe al menos un documento relevante entre los primeros resultados.\\
+
+\hline
+\end{tabular}
+
+\end{table}
+
+\subsection{Evaluación cualitativa}
+
+Además de las métricas tradicionales de recuperación de información, la presente investigación incorporó una evaluación cualitativa orientada a analizar la calidad de las respuestas generadas mediante la arquitectura Retrieval-Augmented Generation.
+
+Esta evaluación consideró aspectos relacionados con la pertinencia de la respuesta, la fidelidad respecto al contexto recuperado, la claridad de la información presentada y la capacidad del sistema para responder correctamente consultas formuladas en lenguaje natural.
+
+Para garantizar la consistencia del proceso de evaluación se definieron criterios previamente establecidos y un protocolo de validación que permitió analizar sistemáticamente las respuestas generadas durante los diferentes escenarios experimentales.
+
+\subsection{Preparación del análisis de resultados}
+
+La información obtenida durante las evaluaciones cuantitativas y cualitativas fue organizada para facilitar el análisis comparativo entre las diferentes estrategias de recuperación implementadas. Esta organización permitió identificar fortalezas y limitaciones de cada enfoque antes de realizar la discusión de resultados presentada en el capítulo siguiente.
+
+La estructura definida durante esta etapa garantiza que las comparaciones se realicen bajo condiciones homogéneas, permitiendo interpretar los resultados desde la perspectiva del problema de investigación planteado inicialmente.
+
+
+\section{Despliegue}
+
+Una vez implementadas y evaluadas las diferentes estrategias de recuperación semántica, el sistema fue preparado para su ejecución mediante una arquitectura desacoplada basada en contenedores. El objetivo de esta etapa consistió en garantizar que cualquier investigador pudiera reproducir el entorno experimental sin realizar configuraciones manuales sobre dependencias, versiones de librerías o componentes de infraestructura.
+
+La solución desarrollada integra tres componentes principales: la aplicación desarrollada en Streamlit, encargada de la interacción con el usuario; la base de datos PostgreSQL con la extensión \textit{pgvector}, utilizada para el almacenamiento y recuperación de embeddings; y el conjunto de notebooks empleados para la construcción del corpus, generación de embeddings y evaluación experimental. Esta organización permite separar claramente las fases de preparación de datos, evaluación y utilización del sistema.
+
+
+\subsection{Arquitectura final}
+
+La arquitectura final implementada corresponde a una aplicación \textit{Retrieval-Augmented Generation (RAG)} organizada en componentes independientes que interactúan mediante una base vectorial común.
+
+El flujo operativo comienza cuando el usuario realiza una consulta desde la interfaz desarrollada en Streamlit. Posteriormente, la consulta es transformada en un embedding utilizando el mismo modelo empleado durante la indexación documental. A continuación, PostgreSQL con la extensión \textit{pgvector} ejecuta la búsqueda por similitud vectorial sobre el corpus previamente indexado y devuelve los fragmentos documentales más relevantes.
+
+Los documentos recuperados son utilizados como contexto para el modelo de lenguaje, el cual genera una respuesta fundamentada acompañada de las referencias correspondientes hacia los Documentos Base de Contratación utilizados durante la recuperación.
+
+Esta arquitectura desacoplada permite reemplazar de manera independiente el modelo de embeddings, el modelo generativo o incluso la estrategia de recuperación sin modificar el resto del sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/final_architecture.png}
+    \caption{Arquitectura final del sistema implementado.}
+    \label{fig:final_architecture}
+\end{figure}
+
+\subsection{Contenedorización}
+
+Con el propósito de facilitar la instalación y garantizar la consistencia del entorno de ejecución, la solución fue preparada mediante contenedores Docker.
+
+La contenedorización permite encapsular todas las dependencias necesarias para el funcionamiento del sistema, incluyendo la versión del motor PostgreSQL, la extensión \textit{pgvector}, las librerías utilizadas para la generación de embeddings y el entorno de ejecución de la aplicación desarrollada en Python.
+
+El uso de Docker elimina diferencias entre sistemas operativos y reduce significativamente el tiempo requerido para poner en funcionamiento el proyecto en un nuevo equipo.
+
+La configuración contempla principalmente dos servicios:
+
+\begin{itemize}
+    \item Base de datos PostgreSQL con extensión \textit{pgvector} para el almacenamiento de embeddings.
+    \item Aplicación desarrollada en Streamlit responsable de la interacción con el usuario y la ejecución del pipeline RAG.
+\end{itemize}
+
+Esta separación favorece el mantenimiento del sistema y permite actualizar cada componente de forma independiente.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.85\textwidth]{figures/docker_architecture.png}
+    \caption{Arquitectura de despliegue mediante Docker Compose.}
+    \label{fig:docker_architecture}
+\end{figure}
+
+\subsection{Reproducibilidad del proyecto}
+Uno de los objetivos del trabajo fue garantizar que los experimentos pudieran ser reproducidos utilizando exactamente el mismo procedimiento descrito durante la investigación.
+
+Para ello se organizó el proyecto siguiendo una estructura modular basada en notebooks independientes, donde cada etapa representa una fase específica del proceso experimental.
+
+El flujo de ejecución comprende las siguientes actividades:
 
 \begin{enumerate}
-    \item Búsqueda tradicional por palabra clave mediante SQL e \texttt{ILIKE}.
-    \item Búsqueda semántica usando similitud vectorial.
-    \item Generación de respuestas mediante RAG con contexto recuperado.
+    \item Extracción de los Documentos Base de Contratación desde SICOES.
+    \item Limpieza y transformación del corpus documental.
+    \item Construcción de los diferentes corpus experimentales.
+    \item Generación de embeddings utilizando el modelo \textit{BAAI bge-large-en-v1.5}.
+    \item Indexación de los embeddings en PostgreSQL con la extensión \textit{pgvector}.
+    \item Evaluación de las estrategias de recuperación implementadas.
+    \item Validación mediante consultas representativas del dominio.
 \end{enumerate}
 
-Las métricas consideradas incluyen Precision@5, Recall@5, MRR, hit@5 y análisis cualitativo de resultados. Para esta iteración se construyó un conjunto curado de consultas \texttt{dev}, \texttt{val} y \texttt{test}, permitiendo comparar búsquedas keyword, semánticas e híbridas.
+Esta organización permite ejecutar nuevamente cualquiera de las etapas sin afectar las demás, favoreciendo tanto la reproducibilidad como la extensibilidad del proyecto.
 
-Los resultados obtenidos indican que la búsqueda keyword basada en tokens constituye la línea base más fuerte sobre el corpus actual, seguida por una estrategia híbrida con reranking semántico. La búsqueda semántica pura presenta menor desempeño en las consultas curadas, lo que sugiere que el dominio SICOES mantiene una alta dependencia de terminología específica y coincidencia léxica exacta. En consecuencia, la arquitectura final del proyecto adopta retrieval configurable y no presupone la superioridad universal del enfoque semántico puro.
+Asimismo, los notebooks generan automáticamente los artefactos necesarios para las siguientes fases, incluyendo corpus procesados, embeddings indexados y resultados experimentales, permitiendo reconstruir completamente el proceso de investigación.

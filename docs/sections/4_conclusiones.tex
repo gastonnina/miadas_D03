@@ -7,27 +7,35 @@
 \end{center}
 
 \newpage
-\chapter{Conclusiones}
+\chapter{CONCLUSIONES}
 
 \section{Conclusiones}
 
-La implementación desarrollada confirma la viabilidad técnica de un sistema reproducible para consulta de convocatorias del SICOES mediante PostgreSQL con pgvector, notebooks de preparación de datos, evaluación controlada y una interfaz funcional en Streamlit. El proyecto logró completar el pipeline de extracción, limpieza, construcción de corpus RAG, indexación vectorial, evaluación comparativa y consulta asistida por LangChain.
+La presente investigación permitió diseñar, implementar y evaluar una arquitectura basada en \textit{Retrieval-Augmented Generation (RAG)} para la consulta inteligente de Documentos Base de Contratación (DBC) publicados por el Sistema de Contrataciones Estatales (SICOES). La solución integra técnicas de procesamiento del lenguaje natural, modelos de embeddings, bases de datos vectoriales y modelos de lenguaje de gran escala dentro de un flujo reproducible de preparación, indexación y recuperación documental.
 
-Los resultados experimentales muestran, sin embargo, que la búsqueda semántica pura no supera al baseline keyword sobre el corpus vigente y el conjunto curado de consultas utilizado. La línea base keyword basada en tokens obtuvo el mejor desempeño en términos de recuperación temprana, mientras que la estrategia híbrida ofreció una alternativa intermedia y más flexible para una futura capa RAG. Esto constituye un hallazgo relevante: en el dominio SICOES, la coincidencia léxica exacta sigue siendo altamente informativa debido al peso de términos administrativos, médicos, técnicos y geográficos muy específicos.
+Durante el desarrollo se implementó un pipeline completo que comprende la extracción automatizada de convocatorias, la limpieza y transformación del contenido documental, la construcción de diferentes variantes del corpus, la generación de embeddings utilizando el modelo \textit{BAAI bge-large-en-v1.5}, la indexación en PostgreSQL mediante la extensión \textit{pgvector} y la evaluación de distintas estrategias de recuperación. La organización modular mediante notebooks independientes permitió garantizar la reproducibilidad de cada etapa del proceso experimental.
 
-\section{Aportes}
+Uno de los principales aportes del trabajo fue la construcción de un corpus orientado al dominio mediante procesos de enriquecimiento, selección de contenido relevante y fragmentación documental. Este procedimiento permitió representar de forma estructurada la información presente en documentos administrativos extensos, facilitando posteriormente la recuperación semántica sobre unidades documentales más específicas.
 
-Entre los principales aportes del trabajo se encuentran:
+Asimismo, se desarrolló una arquitectura modular utilizando LangChain como componente de orquestación entre el modelo de embeddings, el sistema de recuperación vectorial y el modelo de lenguaje. Esta arquitectura facilita la sustitución o actualización de cualquiera de sus componentes sin afectar el funcionamiento general del sistema.
 
-\begin{itemize}
-    \item la organización de un pipeline reproducible desde datos crudos hasta corpus orientado a retrieval;
-    \item la implementación de una base vectorial en PostgreSQL con \texttt{pgvector};
-    \item la definición de una línea base keyword fuerte y comparable frente a estrategias semánticas e híbridas;
-    \item la construcción de un dataset curado de consultas \texttt{dev}, \texttt{val} y \texttt{test};
-    \item la implementación de una cadena RAG configurable por modo de recuperación y proveedor de LLM;
-    \item una interfaz funcional en Streamlit para explorar retrieval y generación asistida.
-\end{itemize}
+La evaluación experimental permitió comparar tres estrategias de recuperación: búsqueda basada en palabras clave, recuperación semántica mediante embeddings y una estrategia híbrida. Los resultados obtenidos evidencian que, para el conjunto de consultas y documentos utilizados durante la investigación, la estrategia basada en palabras clave alcanzó el mejor desempeño en recuperación temprana. Este comportamiento puede atribuirse a la naturaleza altamente estructurada de los Documentos Base de Contratación, donde términos administrativos, técnicos y normativos poseen un elevado poder discriminativo.
 
-\section{Trabajo futuro}
+Por otra parte, la estrategia híbrida demostró constituir una alternativa flexible al combinar recuperación léxica y semántica dentro de un mismo mecanismo de búsqueda. Aunque no superó al enfoque basado exclusivamente en palabras clave bajo el protocolo experimental utilizado, representa una base sólida para futuras mejoras mediante técnicas de reranking, expansión de consultas o modelos de embeddings especializados para el dominio.
 
-Como líneas futuras se consideran la incorporación de documentos adicionales de ficha y PDFs, el enriquecimiento del corpus con información documental más extensa, la experimentación con modelos de embeddings alternativos y rerankers, la ampliación del dataset de evaluación con etiquetas de relevancia más ricas, y la comparación de respuestas RAG producidas a partir de retrieval keyword, híbrido y semántico bajo protocolos de evaluación más amplios.
+Finalmente, se desarrolló una aplicación funcional basada en Streamlit que permite consultar Documentos Base de Contratación utilizando la arquitectura implementada. La aplicación demuestra la viabilidad técnica de integrar recuperación vectorial, generación aumentada por recuperación y modelos de lenguaje dentro de una solución reproducible para apoyar la búsqueda y consulta de información en procesos de contratación pública.
+
+\section{Recomendaciones y trabajo futuro}
+
+
+A partir de los resultados obtenidos durante la investigación, se recomienda ampliar el corpus documental incorporando nuevas convocatorias y documentos complementarios publicados por el SICOES. Un mayor volumen y diversidad documental permitirá incrementar la cobertura temática del sistema y evaluar el comportamiento de las estrategias de recuperación sobre escenarios más representativos.
+
+Asimismo, resulta conveniente enriquecer el corpus mediante la incorporación del contenido completo de los documentos PDF asociados a cada convocatoria. Esto permitiría ampliar el contexto disponible durante la recuperación y mejorar la capacidad del sistema para responder consultas que requieren información detallada distribuida en diferentes secciones documentales.
+
+Como línea futura de investigación se recomienda evaluar modelos de embeddings especializados para el idioma español o entrenados sobre dominios jurídico-administrativos, así como incorporar técnicas modernas de reranking semántico que permitan reordenar los documentos recuperados antes de ser utilizados por el modelo generativo. Estas estrategias podrían incrementar la precisión de recuperación en consultas complejas.
+
+También se considera importante ampliar el conjunto de consultas utilizado durante la evaluación experimental, incorporando un mayor número de preguntas representativas del dominio y estableciendo niveles de relevancia más detallados para cada documento recuperado. Esto permitiría realizar evaluaciones más robustas utilizando métricas ampliamente aceptadas en recuperación de información.
+
+Desde el punto de vista tecnológico, la arquitectura implementada facilita la incorporación de nuevos modelos de lenguaje y diferentes proveedores de servicios de inteligencia artificial. En consecuencia, futuras investigaciones podrían comparar el desempeño de modelos abiertos y comerciales considerando criterios como calidad de respuesta, tiempo de inferencia, consumo computacional y costos de operación.
+
+Finalmente, se recomienda integrar el sistema desarrollado con plataformas institucionales relacionadas con la gestión documental y las contrataciones públicas, permitiendo validar su funcionamiento en escenarios reales de utilización y recopilar retroalimentación de especialistas del dominio. Esta integración constituiría un paso importante hacia la adopción práctica de arquitecturas Retrieval-Augmented Generation como herramientas de apoyo para la consulta inteligente de información pública.
