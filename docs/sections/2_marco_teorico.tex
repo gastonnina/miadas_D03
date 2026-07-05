@@ -9,7 +9,7 @@
 \newpage
 \chapter{MARCO TEÓRICO}
 
-\section{Recuperación de información y procesamiento del lenguaje natural}
+\section{Recuperación de información}
 
 \subsection{Procesamiento del lenguaje natural}
 
@@ -23,60 +23,213 @@ La recuperación de información tradicional se basa en la coincidencia entre lo
 
 La recuperación semántica busca superar la dependencia de coincidencias exactas al representar consultas y documentos mediante vectores densos que aproximan su significado. Bajo este paradigma, una consulta puede recuperar documentos relevantes aun cuando no compartan exactamente las mismas palabras, siempre que exista cercanía conceptual en el espacio vectorial \parencite{reimers2019sentencebert, karpukhin2020dpr}. Este tipo de recuperación es especialmente atractivo cuando los usuarios formulan necesidades en lenguaje natural y cuando los documentos contienen variantes terminológicas o redacciones heterogéneas.
 
-\section{Representación vectorial y bases vectoriales}
+\section{Representación vectorial y recuperación semántica}
 
 \subsection{Embeddings de texto}
 
-Los \textit{embeddings} son representaciones numéricas densas que codifican relaciones semánticas entre palabras, frases o documentos. En los sistemas modernos de búsqueda semántica, estas representaciones permiten comparar textos por cercanía vectorial en lugar de depender únicamente de superposición léxica \parencite{reimers2019sentencebert}. Para esta investigación, los embeddings constituyen la base del índice semántico, ya que permiten posicionar consultas y convocatorias dentro de un mismo espacio de similitud.
+Los modelos de lenguaje de gran tamaño (Large Language Models, LLM) no procesan el texto únicamente como secuencias de caracteres o palabras, sino que transforman cada fragmento de información en representaciones numéricas denominadas \textit{embeddings}. Estas representaciones permiten que los algoritmos de aprendizaje profundo interpreten el significado semántico de un texto y establezcan relaciones entre diferentes conceptos dentro de un espacio vectorial de alta dimensión \parencite{mikolov2013efficient,bommasani2021foundation}.
+
+Desde una perspectiva matemática, un embedding corresponde a un vector compuesto por cientos o miles de valores reales. Cada dimensión captura diferentes características aprendidas durante el entrenamiento del modelo, de manera que textos con significados similares producen vectores cercanos entre sí, mientras que conceptos diferentes generan representaciones más alejadas.
+
+Aunque los modelos modernos generan embeddings de alta dimensionalidad, generalmente entre 768 y 3072 dimensiones dependiendo del modelo utilizado, su funcionamiento puede comprenderse mediante espacios vectoriales simplificados. La Figura \ref{fig:embeddings_conceptual} presenta una representación conceptual en tres dimensiones donde cada palabra es transformada en un vector numérico.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{figures/vector_embedding_example.png}
+    \caption{Representación conceptual de palabras mediante embeddings en un espacio vectorial.}
+    \label{fig:embeddings_conceptual}
+\end{figure}
+
+En la Figura \ref{fig:embeddings_conceptual} puede observarse que cada palabra se representa mediante un conjunto de valores numéricos. Aunque estos valores no poseen un significado interpretable de manera individual, la posición relativa de los vectores dentro del espacio permite preservar relaciones semánticas entre diferentes conceptos. En el ejemplo, la diferencia existente entre los vectores correspondientes a \textit{man} y \textit{king} mantiene una relación similar a la observada entre \textit{woman} y \textit{queen}, evidenciando que el modelo ha aprendido conceptos asociados al género y la jerarquía.
+
+Esta propiedad constituye uno de los fundamentos más importantes del Procesamiento del Lenguaje Natural moderno, ya que permite comparar documentos mediante operaciones matemáticas sobre sus vectores en lugar de depender exclusivamente de coincidencias exactas entre palabras. Como consecuencia, documentos que expresan una misma idea utilizando vocabulario diferente pueden ubicarse próximos dentro del espacio vectorial, facilitando tareas como búsqueda semántica, clasificación de documentos, agrupamiento de información y sistemas de recuperación aumentada por generación (Retrieval-Augmented Generation, RAG) \parencite{reimers2019sentence,lewis2020retrieval}.
+
+En el contexto de la presente investigación, los embeddings representan el mecanismo mediante el cual los documentos almacenados son convertidos en vectores antes de ser indexados dentro de la base de datos vectorial. Posteriormente, las consultas realizadas por el usuario también son transformadas en embeddings, permitiendo recuperar los fragmentos de información más relacionados semánticamente antes de generar una respuesta utilizando un Modelo de Lenguaje Grande.
+
+\subsection{Espacio vectorial semántico}
+
+Los embeddings representan palabras, frases o documentos como puntos dentro de un espacio vectorial de alta dimensión. Aunque cada dimensión individual carece de una interpretación semántica directa, la posición relativa entre los vectores permite preservar relaciones de significado aprendidas durante el entrenamiento del modelo \parencite{mikolov2013efficient,reimers2019sentence}.
+
+En este espacio, documentos con contenidos similares tienden a ubicarse próximos entre sí, mientras que aquellos que describen conceptos diferentes aparecen separados por una mayor distancia. Esta organización permite transformar un problema lingüístico en un problema geométrico, donde la similitud entre textos puede calcularse mediante operaciones matemáticas sobre sus representaciones vectoriales.
+
+Como se observa en la Figura \ref{fig:embeddings_conceptual}, la diferencia vectorial existente entre los conceptos \textit{man} y \textit{king} guarda una relación semejante a la observada entre \textit{woman} y \textit{queen}. Esto evidencia que los modelos modernos no únicamente almacenan palabras, sino también relaciones semánticas entre ellas.
+
+Gracias a esta propiedad, documentos escritos utilizando vocabulario diferente pero con significados equivalentes pueden recuperarse como información relevante durante una búsqueda semántica. Este comportamiento constituye el fundamento sobre el cual operan las bases de datos vectoriales y los sistemas Retrieval-Augmented Generation utilizados en la presente investigación.
+
+\subsection{Modelos Sentence Transformers}
+
+Los primeros modelos de embeddings se enfocaban principalmente en representar palabras individuales. Sin embargo, aplicaciones modernas como la búsqueda semántica requieren representar oraciones o documentos completos preservando su significado contextual. Para resolver esta necesidad surgieron los modelos Sentence Transformers, una familia de arquitecturas derivadas de BERT que generan embeddings optimizados para medir similitud semántica entre textos completos \parencite{reimers2019sentence}.
+
+Estos modelos son entrenados utilizando redes siamesas y funciones de pérdida diseñadas para aproximar representaciones de textos con significados similares. Como resultado, documentos relacionados tienden a producir embeddings cercanos dentro del espacio vectorial, mejorando considerablemente el desempeño de tareas como recuperación de información, agrupamiento documental y sistemas RAG.
+
+Entre los modelos disponibles destacan MiniLM, MPNet y los modelos multilingües desarrollados por Sentence Transformers. Estos últimos permiten representar documentos escritos en diferentes idiomas dentro de un mismo espacio semántico, facilitando aplicaciones internacionales sin necesidad de entrenar modelos específicos para cada lengua.
+
+En esta investigación se emplea el modelo \texttt{paraphrase-multilingual-MiniLM-L12-v2}, seleccionado por su capacidad para representar documentos en español mediante embeddings compactos y eficientes, adecuados para su almacenamiento y recuperación utilizando PostgreSQL junto con la extensión pgvector.
+
+\subsection{Similitud vectorial}
+
+Una vez que los documentos y las consultas han sido representados mediante embeddings, es necesario definir una medida que permita cuantificar qué tan cercanos son dos vectores. Esta comparación constituye la base de la recuperación semántica, ya que permite ordenar los documentos según su proximidad con la consulta realizada por el usuario.
+
+Una de las métricas más utilizadas en procesamiento del lenguaje natural es la similitud del coseno. Esta medida compara la orientación de dos vectores y no únicamente su magnitud. Por ello, resulta útil cuando interesa determinar si dos textos expresan ideas similares, aunque difieran en extensión o en cantidad de palabras \parencite{manning2008ir}.
+
+La similitud del coseno entre dos vectores \(A\) y \(B\) se define como:
+
+\[
+\text{cosine}(A,B) = \frac{A \cdot B}{\|A\| \|B\|}
+\]
+
+donde \(A \cdot B\) representa el producto punto entre ambos vectores, mientras que \(\|A\|\) y \(\|B\|\) corresponden a sus normas. Un valor cercano a 1 indica alta similitud, mientras que valores cercanos a 0 indican baja relación semántica.
+
+Además de la similitud del coseno, también pueden utilizarse otras medidas como la distancia euclidiana o el producto interno. La elección de la métrica depende del modelo de embeddings empleado, del tipo de normalización aplicada y de las capacidades de la base vectorial utilizada.
+
+En el contexto de esta monografía, la similitud vectorial permite recuperar convocatorias cuya descripción, objeto de contratación o contenido documental se aproxima semánticamente a la consulta del proveedor. Esta etapa es fundamental para evaluar si la búsqueda semántica puede complementar o superar a la recuperación basada en coincidencia textual.
 
 \subsection{Dense retrieval y similitud vectorial}
 
 El \textit{dense retrieval} utiliza vectores para recuperar documentos relevantes a partir de funciones de distancia o similitud, tales como distancia euclidiana, producto interno o similitud coseno. Trabajos como \textit{Dense Passage Retrieval} mostraron que los recuperadores densos pueden superar a líneas base léxicas en varios escenarios de pregunta-respuesta abierta, siempre que el corpus, el modelo y el esquema de entrenamiento estén bien alineados con la tarea \parencite{karpukhin2020dpr}. Sin embargo, su desempeño práctico depende de la calidad del corpus, del tamaño de los fragmentos indexados y de la pertinencia del modelo de embeddings seleccionado.
 
-\subsection{Bases vectoriales y pgvector}
+\subsection{Bases de datos vectoriales}
 
-Una base vectorial permite almacenar embeddings y ejecutar consultas de vecinos más cercanos sobre ellos. En esta monografía se adopta PostgreSQL con la extensión \texttt{pgvector}, debido a que permite integrar datos estructurados y recuperación vectorial dentro de una misma plataforma. Según la documentación oficial del proyecto, \texttt{pgvector} soporta búsqueda exacta y aproximada, además de varias funciones de distancia, incluyendo L2, producto interno y distancia coseno \parencite{pgvector2025}. Esta elección favorece una arquitectura mantenible y reproducible para un entorno aplicado como el analizado.
+Las bases de datos vectoriales constituyen sistemas especializados para almacenar, indexar y consultar representaciones numéricas de alta dimensión, conocidas como \textit{embeddings}. Su propósito principal es permitir la recuperación de documentos similares desde el punto de vista semántico, incluso cuando la consulta del usuario no comparte coincidencias textuales exactas con los documentos almacenados \parencite{malkov2020hnsw,pgvector2024}.
 
+A diferencia de una base de datos relacional tradicional, donde las consultas se apoyan principalmente en igualdad, filtros estructurados o coincidencias textuales, una base de datos vectorial compara la distancia entre representaciones numéricas. Bajo este enfoque, tanto los documentos como las consultas se transforman previamente en vectores, y la recuperación se realiza identificando los elementos más cercanos dentro del espacio vectorial.
+
+La Figura \ref{fig:vector_database_pipeline} muestra el flujo conceptual de una base de datos vectorial. En primer lugar, los documentos son procesados por un modelo de embeddings. Luego, sus representaciones vectoriales se almacenan en una base de datos preparada para consultas de similitud. Cuando el usuario realiza una consulta, esta también se transforma en embedding y se compara contra los vectores almacenados para recuperar los resultados más cercanos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/fig_vector_database_pipeline.png}
+    \caption{Flujo conceptual de almacenamiento y búsqueda en una base de datos vectorial.}
+    \label{fig:vector_database_pipeline}
+\end{figure}
+
+En escenarios reales, comparar una consulta contra todos los vectores almacenados puede resultar costoso, especialmente cuando el corpus contiene miles o millones de documentos. Por esta razón, las bases vectoriales incorporan mecanismos de indexación que permiten acelerar la búsqueda de vecinos más cercanos sin realizar una comparación exhaustiva contra todo el conjunto de datos.
+
+En la presente investigación, la base vectorial se utiliza para almacenar embeddings generados a partir de convocatorias públicas del SICOES. Esta decisión permite consultar documentos mediante similitud semántica y comparar su desempeño frente a mecanismos tradicionales de recuperación léxica.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_pipeline_sicoes_rag.png}
+\caption{Pipeline conceptual del sistema de recuperación semántica implementado en la presente investigación.}
+\label{fig:pipeline_general}
+\end{figure}
+
+La Figura \ref{fig:pipeline_general} resume la arquitectura general del sistema desarrollado. Se distinguen dos etapas principales. La primera corresponde al procesamiento offline, donde las convocatorias del SICOES son extraídas, limpiadas, enriquecidas y transformadas en embeddings almacenados mediante PostgreSQL y pgvector. La segunda corresponde al procesamiento online, en el cual una consulta del usuario es utilizada para recuperar evidencia documental relevante que posteriormente es enviada al modelo generativo para construir una respuesta fundamentada.
+
+\subsection{Búsqueda aproximada de vecinos más cercanos}
+
+La búsqueda de vecinos más cercanos consiste en identificar, dentro de un conjunto de vectores, aquellos elementos cuya distancia respecto a una consulta es menor. En una búsqueda exacta, el sistema compara el vector de consulta contra todos los vectores almacenados y luego ordena los resultados según su similitud. Aunque este enfoque es preciso, puede resultar ineficiente cuando el volumen de datos crece.
+
+Para resolver esta limitación se emplean métodos de búsqueda aproximada de vecinos más cercanos, conocidos como \textit{Approximate Nearest Neighbor} (ANN). Estos métodos sacrifican una pequeña proporción de exactitud a cambio de reducir significativamente el tiempo de consulta, lo que los hace adecuados para aplicaciones interactivas y sistemas de recuperación de información a gran escala \parencite{malkov2020hnsw}.
+
+Uno de los enfoques más utilizados es HNSW (\textit{Hierarchical Navigable Small World}), que organiza los vectores en una estructura de grafo jerárquico. Esta estructura permite recorrer el espacio vectorial de manera eficiente, aproximándose progresivamente a los vecinos más cercanos sin evaluar todos los vectores existentes.
+
+En sistemas RAG, la búsqueda ANN resulta especialmente importante porque la recuperación debe ejecutarse antes de generar una respuesta. Si la etapa de búsqueda es lenta o poco precisa, la respuesta final puede verse afectada tanto en tiempo de ejecución como en calidad del contexto proporcionado al modelo de lenguaje.
+
+En esta investigación, la búsqueda aproximada es relevante porque PostgreSQL con \texttt{pgvector} permite crear índices especializados, como HNSW e IVFFlat, para acelerar consultas vectoriales. Esto posibilita evaluar estrategias de recuperación semántica dentro de una infraestructura reproducible y relativamente simple.
+
+\subsection{PostgreSQL y pgvector}
+
+PostgreSQL es un sistema gestor de bases de datos relacional ampliamente utilizado por su estabilidad, extensibilidad y compatibilidad con distintos tipos de aplicaciones. Mediante su arquitectura de extensiones, es posible incorporar nuevas capacidades sin abandonar el ecosistema relacional tradicional. En este contexto, \texttt{pgvector} permite almacenar y consultar vectores directamente dentro de PostgreSQL \parencite{pgvector2024}.
+
+La extensión \texttt{pgvector} incorpora el tipo de dato \texttt{vector}, operadores de distancia y soporte para índices orientados a búsqueda vectorial. Esto permite combinar información estructurada, como identificadores, entidades, fechas o categorías, con representaciones semánticas generadas por modelos de embeddings. De esta forma, una misma base de datos puede manejar consultas relacionales convencionales y búsquedas por similitud vectorial.
+
+Una ventaja importante de este enfoque es la simplificación arquitectónica. En lugar de utilizar una base de datos relacional para metadatos y una base vectorial separada para embeddings, PostgreSQL con \texttt{pgvector} permite centralizar ambas necesidades en una misma plataforma. Esto facilita la trazabilidad de los experimentos, la reproducción de consultas y la integración con scripts de evaluación.
+
+En la presente monografía, PostgreSQL con \texttt{pgvector} se utiliza como componente central del sistema de recuperación. Los registros del corpus SICOES se almacenan junto con sus embeddings, permitiendo comparar estrategias de búsqueda textual, búsqueda semántica e híbrida dentro de un mismo entorno experimental.
+
+\subsection{Construcción y enriquecimiento del corpus}
+
+La calidad de un sistema de recuperación depende en gran medida del corpus documental utilizado durante el proceso de indexación. Un corpus organizado, consistente y representativo permite generar embeddings más informativos y, en consecuencia, mejorar la calidad de la recuperación semántica \parencite{manning2008ir}.
+
+La construcción del corpus comprende diferentes etapas, entre ellas la extracción de documentos, limpieza del texto, normalización de caracteres, eliminación de información redundante y estructuración de los contenidos. Estas actividades buscan reducir el ruido documental antes de generar las representaciones vectoriales.
+
+En numerosos escenarios resulta conveniente enriquecer el corpus mediante la incorporación de metadatos, resúmenes, categorías o información contextual adicional. Este enriquecimiento incrementa la cantidad de información disponible para el modelo de embeddings y favorece la recuperación de documentos relevantes durante las búsquedas semánticas.
+
+En el presente trabajo, el corpus documental se construye a partir de convocatorias públicas del SICOES, aplicando procesos de limpieza y enriquecimiento antes de la generación de embeddings. Posteriormente, estas representaciones son almacenadas en PostgreSQL utilizando la extensión pgvector para soportar consultas semánticas.
+
+Una vez construido y enriquecido el corpus documental, cada fragmento es transformado en una representación vectorial mediante un modelo de embeddings y almacenado dentro de la base vectorial. A partir de este momento, el sistema dispone de una colección indexada que puede utilizarse tanto para recuperación semántica como para arquitecturas Retrieval-Augmented Generation, las cuales se describen en la siguiente sección.
 \section{Retrieval-Augmented Generation}
 
 \subsection{Concepto de Retrieval-Augmented Generation}
 
-Retrieval-Augmented Generation (RAG) es un enfoque que combina un modelo generativo con un mecanismo previo de recuperación de contexto externo. Su formulación moderna fue sistematizada por Lewis et al., quienes plantean una arquitectura en la que un modelo generativo consulta memoria no paramétrica mediante recuperación antes de producir la respuesta \parencite{lewis2020rag}. Conceptualmente, RAG separa dos funciones: primero identificar evidencia relevante y luego generar una salida apoyada en dicha evidencia.
+Retrieval-Augmented Generation (RAG) es una arquitectura que combina recuperación de información con generación de lenguaje natural. Su objetivo es proporcionar al modelo generativo un contexto externo relevante antes de producir una respuesta, reduciendo la dependencia exclusiva del conocimiento interno del modelo \parencite{lewis2020retrieval}.
 
-La Figura \ref{fig:rag_pipeline} resume este flujo conceptual, en el que una colección documental se indexa, una consulta activa el proceso de recuperación, los contextos más relevantes se incorporan al \textit{prompt} y el modelo genera una respuesta fundamentada en la evidencia recuperada.
+En un flujo RAG, la consulta del usuario no se envía directamente al modelo de lenguaje como único insumo. Primero se utiliza un mecanismo de recuperación para identificar documentos, fragmentos o evidencias relevantes dentro de un corpus. Luego, estos elementos se incorporan al prompt como contexto adicional, permitiendo que el modelo genere una respuesta fundamentada en información recuperada.
+
+La Figura \ref{fig:rag_pipeline} presenta una arquitectura general de RAG. El proceso inicia con la pregunta del usuario, continúa con la recuperación de documentos relevantes, construye un prompt aumentado con evidencia y finalmente genera una respuesta mediante un modelo de lenguaje.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/fig_rag_pipeline.png}
+    \caption{Arquitectura general de Retrieval-Augmented Generation.}
+    \label{fig:rag_pipeline}
+\end{figure}
+
+La utilidad de RAG depende directamente de la calidad de la recuperación previa. Si el retrieval entrega documentos pertinentes, el modelo puede sintetizar información útil, explicar requisitos y justificar recomendaciones. En cambio, si el contexto recuperado es incompleto o ruidoso, la respuesta generada puede perder especificidad o apoyarse en evidencia poco adecuada.
+
+En esta investigación, RAG se aplica al análisis de convocatorias públicas recuperadas desde el corpus SICOES. Su objetivo no es únicamente responder preguntas generales, sino apoyar la interpretación de oportunidades, la identificación de requisitos y la justificación preliminar de pertinencia para un proveedor.
+
+
+\subsection{Chunking documental}
+
+El \textit{chunking} es el proceso mediante el cual un documento extenso se divide en fragmentos más pequeños antes de ser indexado o enviado como contexto a un modelo de lenguaje. Esta etapa es necesaria porque los documentos reales suelen exceder el tamaño óptimo para recuperación y porque los modelos generativos tienen límites de ventana de contexto \parencite{lewis2020retrieval}.
+
+Una estrategia de chunking adecuada busca preservar unidades de significado. Si los fragmentos son demasiado pequeños, pueden perder información contextual necesaria para interpretar correctamente una convocatoria. Si son demasiado grandes, pueden introducir ruido y reducir la precisión de la recuperación, ya que un mismo fragmento podría mezclar información técnica, administrativa y normativa.
+
+En documentos administrativos como los DBC del SICOES, el chunking representa un desafío particular. Muchas secciones contienen formularios, garantías, cronogramas, requisitos legales y texto plantilla que no siempre aporta valor para responder consultas de negocio. Por ello, no basta con dividir el documento por longitud; también resulta importante considerar la relevancia técnica del contenido.
+
+En el presente trabajo se exploró la construcción de variantes de corpus con fragmentos enfocados en contenido técnico. Esta decisión responde a la necesidad de reducir ruido documental y evaluar si los fragmentos más específicos mejoran la calidad del retrieval y, posteriormente, la utilidad del sistema RAG.
+
+\subsection{Recuperación híbrida}
+
+La recuperación híbrida combina mecanismos léxicos y semánticos con el propósito de aprovechar las fortalezas de ambos enfoques. Mientras que la búsqueda léxica suele funcionar bien cuando existen términos exactos, códigos o expresiones específicas del dominio, la búsqueda semántica permite recuperar documentos relacionados conceptualmente aunque no compartan las mismas palabras \parencite{manning2008ir,karpukhin2020dpr}.
+
+En dominios documentales especializados, la recuperación híbrida resulta particularmente relevante porque las consultas pueden contener tanto términos técnicos exactos como descripciones en lenguaje natural. Por ejemplo, una búsqueda sobre medicamentos, reactivos de laboratorio, software o infraestructura puede beneficiarse de coincidencias textuales específicas, pero también de relaciones semánticas entre conceptos equivalentes.
+
+Sin embargo, la combinación de ambos enfoques no garantiza automáticamente una mejora. La calidad del corpus, la calibración de pesos, la cobertura documental y la alineación entre consulta y contenido indexado influyen directamente en el resultado. Un componente semántico mal alineado puede introducir ruido y perjudicar el ranking final.
+
+En esta monografía, la recuperación híbrida se evalúa como una alternativa intermedia entre la búsqueda textual tradicional y la búsqueda puramente semántica. Su análisis permite determinar si la combinación de señales mejora la identificación de convocatorias pertinentes o si el dominio SICOES favorece principalmente coincidencias léxicas controladas.
 
 \begin{figure}[H]
 \centering
-\begingroup
-\shorthandoff{<>}
-\begin{tikzpicture}[
-  font=\small,
-  box/.style={draw, rounded corners=4pt, align=center, minimum height=1.05cm},
-  docs/.style={box, fill=gray!15, text width=2.7cm},
-  stage/.style={box, fill=cyan!18, text width=2.9cm},
-  retr/.style={box, fill=green!18, text width=3.1cm},
-  llm/.style={box, fill=blue!15, text width=2.5cm},
-  resultbox/.style={box, fill=yellow!25, text width=2.7cm}
-]
-  \node[docs] (docs) at (0, 0) {\textbf{Colecci\'on documental}\\Documentos y fuentes externas};
-  \node[stage] (index) at (3.6, 0) {\textbf{Indexaci\'on}\\Fragmentaci\'on y embeddings};
-  \node[retr] (store) at (7.5, 0) {\textbf{Recuperaci\'on}\\\'Indice o base vectorial};
-  \node[stage] (query) at (7.5, 2.2) {\textbf{Consulta del usuario}};
-  \node[retr] (context) at (11.5, 0) {\textbf{Contextos relevantes}\\Top-$k$ fragmentos recuperados};
-  \node[llm] (llm) at (15.2, 0) {\textbf{LLM}\\Prompt aumentado};
-  \node[resultbox] (answer) at (18.5, 0) {\textbf{Respuesta}\\Salida fundamentada};
-
-  \draw[->, thick] (docs) -- (index);
-  \draw[->, thick] (index) -- (store);
-  \draw[->, thick] (query) -- (store);
-  \draw[->, thick] (store) -- (context);
-  \draw[->, thick] (context) -- (llm);
-  \draw[->, thick] (llm) -- (answer);
-\end{tikzpicture}
-\endgroup
-\caption{Esquema conceptual del flujo de \textit{Retrieval-Augmented Generation}.}
-\label{fig:rag_pipeline}
+\includegraphics[width=.95\textwidth]{figures/fig_retrieval_strategies.png}
+\caption{Comparación conceptual entre recuperación keyword, semántica e híbrida.}
+\label{fig:retrieval}
 \end{figure}
+
+Como se observa en la Figura \ref{fig:retrieval}, cada estrategia presenta ventajas particulares dependiendo del dominio. La recuperación keyword resulta especialmente efectiva cuando predominan términos técnicos o códigos específicos, mientras que la recuperación semántica permite identificar documentos relacionados por significado. Los enfoques híbridos buscan combinar ambas fuentes de evidencia para mejorar la calidad del ranking final.
+
+\subsection{Evaluación de sistemas de recuperación}
+
+La evaluación de sistemas de recuperación de información requiere métricas orientadas al ranking, ya que no solo interesa saber si un documento relevante fue recuperado, sino también en qué posición aparece dentro de los resultados. En aplicaciones prácticas, los primeros resultados suelen tener mayor importancia porque son los que el usuario revisa con mayor probabilidad \parencite{manning2008ir}.
+
+Entre las métricas utilizadas se encuentra \textit{Precision@k}, que mide la proporción de documentos relevantes dentro de los primeros \(k\) resultados recuperados. También se utiliza \textit{Recall@k}, que calcula qué proporción de los documentos relevantes esperados fue recuperada dentro de ese mismo corte. Estas métricas permiten evaluar la calidad del top-k retornado por el sistema.
+
+Otra métrica relevante es \textit{Mean Reciprocal Rank} (MRR), que considera la posición del primer resultado relevante. Si el primer documento relevante aparece en la primera posición, el valor es alto; si aparece más abajo, el valor disminuye. Esta métrica es especialmente útil cuando se espera que el sistema ubique una respuesta pertinente lo más arriba posible.
+
+Finalmente, \textit{Hit@k} indica si al menos un documento relevante fue recuperado dentro de los primeros \(k\) resultados. Aunque es una métrica menos estricta, resulta útil para analizar si el sistema logra encontrar alguna evidencia pertinente dentro del conjunto inicial presentado al usuario.
+
+En el presente estudio se emplean estas métricas para comparar estrategias de búsqueda textual, semántica e híbrida. Esta evaluación cuantitativa se complementa con una validación cualitativa de respuestas RAG, dado que la utilidad final del sistema no depende únicamente del ranking, sino también de la capacidad de transformar documentos recuperados en explicaciones útiles para la toma de decisiones.
+
+\subsection{Construcción del contexto}
+
+Uno de los componentes más importantes de un sistema Retrieval-Augmented Generation es la construcción del contexto que será enviado al modelo de lenguaje. En lugar de proporcionar únicamente la consulta del usuario, el sistema incorpora los documentos recuperados durante la etapa de búsqueda, permitiendo que el modelo genere respuestas fundamentadas en evidencia documental \parencite{lewis2020retrieval}.
+
+El contexto suele construirse concatenando los fragmentos recuperados junto con instrucciones específicas para el modelo generativo. Esta estrategia reduce la probabilidad de generar información incorrecta y mejora la capacidad del sistema para responder preguntas relacionadas con documentos específicos.
+
+La cantidad de documentos recuperados, el orden en que son presentados y la longitud del contexto representan factores que influyen directamente sobre la calidad de la respuesta generada. Por esta razón, la selección de los fragmentos más relevantes constituye una etapa fundamental dentro de la arquitectura RAG.
+
+En esta investigación, el contexto utilizado por el modelo generativo se construye a partir de las convocatorias recuperadas mediante búsqueda semántica e híbrida, proporcionando evidencia documental antes de solicitar la generación de una respuesta.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/fig_langchain_flow.png}
+\caption{Flujo conceptual de recuperación, construcción del contexto y generación mediante LangChain.}
+\label{fig:langchain_flow}
+\end{figure}
+
+La Figura \ref{fig:langchain_flow} muestra cómo la consulta del usuario es enriquecida mediante un componente de recuperación antes de ser enviada al modelo de lenguaje. Esta separación entre recuperación, construcción del contexto y generación constituye uno de los principios fundamentales de las arquitecturas RAG modernas.
 
 \subsection{Ventajas del enfoque RAG}
 
